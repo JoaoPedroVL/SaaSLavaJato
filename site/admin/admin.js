@@ -169,9 +169,19 @@
     return data;
   }
 
+  let refreshPromise = null;
+
   function sessionExpired() {
     clearSession();
     showLogin("Sua sessão expirou. Entre de novo.");
+  }
+
+  // uma renovação por vez: duas chamadas simultâneas não invalidam o refresh token
+  function renewSession() {
+    if (!refreshPromise) {
+      refreshPromise = refreshSession().finally(() => { refreshPromise = null; });
+    }
+    return refreshPromise;
   }
 
   async function ensureSession() {
@@ -181,7 +191,7 @@
     }
     if (Date.now() < session.expires_at - 60000) return;
     try {
-      await refreshSession();
+      await renewSession();
     } catch (e) {
       sessionExpired();
       throw e;
@@ -211,7 +221,7 @@
 
     if (res.status === 401 && !retried) {
       try {
-        await refreshSession();
+        await renewSession();
       } catch (e) {
         sessionExpired();
         throw e;
