@@ -1,0 +1,28 @@
+# dependências
+node_modules/
+.pnp
+.pnp.js
+
+# variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# build
+.next/
+dist/
+build/
+out/
+
+# logs e sistema
+*.log
+.DS_Store
+Thumbs.db
+
+# supabase local
+supabase/.temp/
+supabase/.branches/
+
+# editores
+.vscode/
+.idea/
