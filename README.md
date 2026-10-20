@@ -4,12 +4,17 @@ SaaS de agenda e agendamento por WhatsApp para lava-jatos.
 
 ## Estado atual
 
-- `site/index.html` — landing page completa (arquivo único, sem build)
+- `site/index.html` — landing page (HTML + CSS, sem build)
+- `site/app.js` — carrega dados do Supabase, monta a página e conduz o chat
+- `site/config.js` — URL, anon key e slug do lava-jato
 - `supabase/` — schema do banco (migrações + seed)
 - `referencias/` — imagens e HTML usados como base
 
 **Projeto Supabase:** `mcccxsovuouleorxfgnr` (SaaSLavaJato, us-west-2)
 **Site publicado:** ainda não
+
+A landing **já lê e grava no banco**: serviços, preços, durações e horários vêm
+das views públicas; o chat consulta `busy_slots` e grava com `create_booking`.
 
 ## Rodar o site
 
@@ -18,9 +23,9 @@ cd site
 python3 -m http.server 8080
 ```
 
-Abra <http://localhost:8080>.
+Abra <http://localhost:8080>. Trocar de lava-jato: <http://localhost:8080/?loja=demo-b>.
 
-Ou simplesmente abra `site/index.html` no navegador.
+> Use o servidor (não `file://`): o chat faz `fetch` na API do Supabase.
 
 ## Banco de dados
 
@@ -81,31 +86,36 @@ values (
 
 ## O que a página já faz
 
-- Seletor de porte do veículo (hatch, sedan, SUV, picape) com preço e tempo por categoria
+- Lê do banco: nome, WhatsApp, endereço, mapa, horário, serviços, preços e durações
+- Seletor de porte do veículo (hatch, sedan, SUV, picape) — preço e tempo por categoria,
+  escolha salva no `localStorage`
 - Tabela de serviços que se atualiza conforme o veículo
-- Chat de agendamento (veículo → serviço → dia → horário → nome → confirmação)
-- Slider antes/depois
-- Prova social, FAQ, mapa, horário de funcionamento com status "aberto agora"
-- SEO local (JSON-LD), Open Graph, favicon
-- Barra fixa de CTA no celular
+- Chat: veículo → serviço → dia → horário → nome → WhatsApp → confirmação
+- Horários livres calculados de verdade (`busy_slots` + horário de funcionamento)
+- Grava o agendamento (`create_booking`), mostra o código, gera arquivo `.ics`
+  para o calendário e link de WhatsApp com o código
+- Trata `slot_taken` (horário acabou de ser pego), `outside_hours` e `past_slot`
+- Status "aberto agora" no fuso do lava-jato
+- Slider antes/depois, prova social, FAQ, mapa, SEO local, barra fixa no celular
+- Se o banco não responder, a página continua de pé e oferece o WhatsApp
 
-## O que é simulado (e onde plugar depois)
+## O que ainda é fixo (por lava-jato)
 
-Tudo que é dado do negócio está no objeto `SITE`, no fim do `index.html`:
+Está em `site/index.html` / `site/app.js`, porque é identidade visual e conteúdo
+editorial — não muda por preço:
 
-- `vehicles` — categorias de carro e o fator de tempo de cada uma
-- `services[].prices` — preço de cada serviço por categoria (`hatch`, `sedan`, `suv`, `picape`)
-- `hours` — tabela `business_hours`
-- `reviews` — avaliações reais (hoje são exemplos)
-- disponibilidade de horários — função `busy()` e `slotsFor()`; trocar pela API
-- confirmação — hoje abre o WhatsApp com a mensagem pronta; depois vira
-  `POST /api/bookings`
+- Logo, nome no topo, cidade no hero, fotos e textos
+- `CONTENT.reviews` e `CONTENT.faq` em `site/app.js`
+- JSON-LD do `<head>` (para multi-tenant de verdade precisa ser renderizado no servidor)
+
+O número de WhatsApp, endereço e horários **não** são fixos: vêm da tabela `tenants`
+e de `business_hours`.
 
 ## Próximos passos
 
 1. ~~Receber fotos reais em `site/assets/`~~ ✅ (antes.jpg / depois.jpg)
-2. Trocar o número de WhatsApp em `SITE.whatsapp`
-3. Substituir os dados do JSON-LD e do `SITE` pelos reais
-4. Ligar a landing no Supabase (views + `create_booking`)
-5. Backend/admin: agenda, clientes, dashboard
-6. WhatsApp: lembretes e confirmação
+2. Trocar o WhatsApp e os preços reais no banco (seed ou admin)
+3. Admin: agenda, clientes, dashboard com funil e previsão de faturamento
+4. WhatsApp: confirmação e lembretes automáticos
+5. Rotas por lava-jato (`/caprichoso`) em vez de `?loja=`
+6. Tela de gerenciar agendamento (remarcar/cancelar pelo código)

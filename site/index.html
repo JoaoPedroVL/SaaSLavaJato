@@ -448,6 +448,24 @@ footer a:hover{color:#fff}
   font-size:13px;color:#9fb0c2;text-decoration:none;
 }
 .chat-wa:hover{color:#fff}
+.success-card{
+  border:1px solid rgba(255,194,26,.45);background:rgba(255,194,26,.07);
+  border-radius:14px;padding:14px;display:flex;flex-direction:column;
+}
+.success-label{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#9fb0c2}
+.success-code{
+  font-family:Archivo;font-size:30px;letter-spacing:.14em;color:var(--sun);
+  margin:2px 0 4px;line-height:1.1;
+}
+.success-card .sum span i{color:#a9b9c9}
+.success-card .chat-wa{margin:10px 0 0}
+.load-error{
+  grid-column:1/-1;border:1px dashed var(--line);border-radius:14px;padding:26px;
+  text-align:center;color:#4a5c6e;background:var(--card);
+}
+.load-error a{color:#0a1526;font-weight:700}
+.flash-prices .svc{animation:priceFlash .42s ease}
+@keyframes priceFlash{0%{transform:translateY(0)}45%{transform:translateY(-3px);border-color:var(--sun)}100%{transform:none}}
 
 /* ---------- animação de entrada ---------- */
 .reveal{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease}
@@ -505,7 +523,7 @@ footer a:hover{color:#fff}
 <header class="top" id="top">
   <div class="wrap">
     <a class="logo" href="#top" aria-label="Caprichoso Estética Automotiva — início">
-      <span class="logo-mark" aria-hidden="true">C</span>
+      <span class="logo-mark" id="logoMark" aria-hidden="true">C</span>
       <span>
         <b>Caprichoso</b>
         <small>Estética Automotiva</small>
@@ -549,7 +567,7 @@ footer a:hover{color:#fff}
       <div class="hero-meta">
         <span><span class="stars" aria-hidden="true">★★★★★</span> 4,9 · 127 avaliações</span>
         <span>📍 Linhares, ES</span>
-        <span>🕘 Seg a sáb</span>
+        <span id="heroHours">🕘 Seg a sáb</span>
       </div>
     </div>
 
@@ -688,7 +706,7 @@ footer a:hover{color:#fff}
 
       <dl>
         <dt>Endereço</dt>
-        <dd>Av. Gov. Jones dos Santos Neves, 1000<br>Linhares, ES · <a href="https://maps.google.com/?q=Linhares+ES" target="_blank" rel="noopener">abrir no Maps</a></dd>
+        <dd><span id="addrText">Av. Gov. Jones dos Santos Neves, 1000<br>Linhares, ES</span> · <a id="mapLink" href="https://maps.google.com/?q=Linhares+ES" target="_blank" rel="noopener">abrir no Maps</a></dd>
 
         <dt>Horário de funcionamento</dt>
         <dd>
@@ -714,7 +732,7 @@ footer a:hover{color:#fff}
 
 <footer>
   <div class="wrap">
-    <span>© <span id="year"></span> Caprichoso Estética Automotiva · Linhares, ES</span>
+    <span>© <span id="year"></span> <span id="footerName">Caprichoso Estética Automotiva</span> · <span id="footerCity">Linhares, ES</span></span>
     <span><a href="#duvidas">Dúvidas</a> · <a href="#contato">Contato</a> · <a href="#" data-book>Agendar</a></span>
   </div>
 </footer>
@@ -736,7 +754,7 @@ footer a:hover{color:#fff}
 
 <section class="chat" id="chat" role="dialog" aria-modal="false" aria-labelledby="chatTitle" hidden>
   <header class="chat-head">
-    <div class="chat-avatar" aria-hidden="true">C</div>
+    <div class="chat-avatar" id="chatAvatar" aria-hidden="true">C</div>
     <div>
       <b id="chatTitle">Caprichoso</b>
       <small>online agora</small>
@@ -755,562 +773,7 @@ footer a:hover{color:#fff}
   </form>
 </section>
 
-<script>
-/* =========================================================
-   CONFIGURAÇÃO — futuramente estes dados vêm da API do SaaS
-   ========================================================= */
-const SITE = {
-  brand: "Caprichoso",
-  whatsapp: "5527999999999",          // DDI + DDD + número, só dígitos
-  address: "Av. Gov. Jones dos Santos Neves, 1000, Linhares, ES",
-  mapQuery: "Linhares, ES",
-  // 0=dom, 1=seg ... 6=sáb — null = fechado. [abre, fecha] em horas
-  hours: { 0: null, 1: [8,18], 2: [8,18], 3: [8,18], 4: [8,18], 5: [8,18], 6: [8,13] },
-  vehicles: [
-    { id:"hatch",  name:"Hatch",  hint:"Onix, HB20, Polo",       timeFactor:1 },
-    { id:"sedan",  name:"Sedan",  hint:"Corolla, Civic, Virtus",  timeFactor:1.1 },
-    { id:"suv",    name:"SUV",    hint:"Compass, Creta, T-Cross", timeFactor:1.25 },
-    { id:"picape", name:"Picape", hint:"Hilux, Ranger, Strada",   timeFactor:1.4 }
-  ],
-  services: [
-    { id:"simples",  name:"Lavagem simples",     minutes:25,  desc:"Externa com shampoo neutro, secagem e pneus.",
-      prices:{ hatch:35, sedan:40, suv:45, picape:55 } },
-    { id:"completa", name:"Lavagem completa",    minutes:40,  desc:"Externa e interna, secagem, vidros e acabamento.",
-      prices:{ hatch:49, sedan:59, suv:69, picape:79 } },
-    { id:"higieniza",name:"Higienização interna",minutes:120, desc:"Bancos, carpete, teto e painel. Sem cheiro de carro velho.",
-      prices:{ hatch:149, sedan:169, suv:199, picape:229 } },
-    { id:"polimento",name:"Polimento técnico",   minutes:180, desc:"Remove riscos leves e devolve o brilho original da pintura.",
-      prices:{ hatch:299, sedan:349, suv:399, picape:449 } },
-    { id:"cristaliza",name:"Cristalização",      minutes:240, desc:"Proteção que mantém o brilho e facilita a próxima lavagem.",
-      prices:{ hatch:499, sedan:579, suv:659, picape:749 } }
-  ],
-  reviews: [
-    { name:"Marcos Almeida", car:"Corolla", text:"Levei pra higienização e o carro saiu com cheiro de novo. Atendimento no horário, sem enrolação." },
-    { name:"Juliana Prado",  car:"Jeep Compass", text:"Agendei pelo site em dois minutos. O polimento ficou melhor do que eu esperava." },
-    { name:"Rafael Souza",   car:"Golf GTI", text:"Preço justo e serviço caprichado de verdade. Já virei cliente fixo." }
-  ],
-  faq: [
-    ["Precisa agendar?", "Não é obrigatório, mas quem agenda tem prioridade e não espera. Sem horário, o atendimento é por ordem de chegada."],
-    ["Como o preço é calculado?", "Cada serviço tem um valor por porte de veículo: hatch, sedan, SUV e picape. É só selecionar o seu carro na tabela de serviços que o preço e o tempo se ajustam."],
-    ["Quanto tempo demora?", "Depende do serviço e do porte do carro. A duração de cada serviço aparece na tabela acima, já ajustada para o seu veículo. Lavagem simples leva cerca de 25 min num hatch e 35 min numa picape."],
-    ["Vocês buscam o carro?", "Sim, para serviços a partir de R$ 149 em Linhares. Combine pelo WhatsApp na hora de agendar."],
-    ["Quais as formas de pagamento?", "Pix, dinheiro, cartão de crédito e débito. Parcelamos polimento e cristalização em até 3x sem juros."],
-    ["O que é cristalização?", "É uma camada de proteção aplicada sobre a pintura que mantém o brilho por mais tempo e facilita a limpeza do dia a dia."],
-    ["Atendem domingo?", "Não. Funcionamos de segunda a sexta das 8h às 18h e sábado das 8h às 13h."]
-  ]
-};
-
-/* utilidades */
-const $ = (s, el=document) => el.querySelector(s);
-const money = n => "R$ " + n.toLocaleString("pt-BR");
-const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const WEEK = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
-
-/* ---------- veículo selecionado ---------- */
-let currentVehicle = (() => {
-  try {
-    const id = localStorage.getItem("caprichoso_vehicle");
-    return SITE.vehicles.find(v => v.id === id) || SITE.vehicles[0];
-  } catch (e) { return SITE.vehicles[0]; }
-})();
-
-const priceFor = (s, v = currentVehicle) => s.prices[v.id];
-const timeFor = (s, v = currentVehicle) => {
-  const raw = s.minutes * v.timeFactor;
-  const step = raw >= 60 ? 15 : 5;   // arredonda para 15 min em serviços longos
-  return Math.round(raw / step) * step;
-};
-const dur = m => {
-  if (m < 60) return m + " min";
-  const h = Math.floor(m / 60), r = m % 60;
-  return r ? `${h}h${String(r).padStart(2,"0")}` : `${h}h`;
-};
-
-/* ---------- ícones ---------- */
-const ICONS = {
-  simples:'<svg viewBox="0 0 24 24"><path d="M4 16h16M6 16l1.5-5.5A2 2 0 0 1 9.4 9h5.2a2 2 0 0 1 1.9 1.5L18 16"/><circle cx="7.5" cy="18" r="1.6"/><circle cx="16.5" cy="18" r="1.6"/></svg>',
-  completa:'<svg viewBox="0 0 24 24"><path d="M4 16h16M6 16l1.5-5.5A2 2 0 0 1 9.4 9h5.2a2 2 0 0 1 1.9 1.5L18 16"/><circle cx="7.5" cy="18" r="1.6"/><circle cx="16.5" cy="18" r="1.6"/><path d="M9 12.5h6"/></svg>',
-  higieniza:'<svg viewBox="0 0 24 24"><path d="M6 20V9a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v11"/><path d="M6 20h12M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M10 12h4"/></svg>',
-  polimento:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3"/></svg>',
-  cristaliza:'<svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2L12 3z"/></svg>'
-};
-
-/* ---------- render: seletor de veículo ---------- */
-function renderVehicleOptions(){
-  $("#vehicleOptions").innerHTML = SITE.vehicles.map(v => `
-    <button class="vp-opt ${v.id === currentVehicle.id ? "active" : ""}"
-            data-vehicle="${v.id}" aria-pressed="${v.id === currentVehicle.id}">
-      <b>${esc(v.name)}</b>
-      <small>${esc(v.hint)}</small>
-    </button>`).join("");
-}
-
-/* ---------- render: serviços ---------- */
-function renderServices(flash){
-  const el = $("#services");
-  el.innerHTML = SITE.services.map(s => `
-    <article class="svc">
-      <div class="svc-top">
-        <span class="svc-icon" aria-hidden="true">${ICONS[s.id] || ICONS.completa}</span>
-        <span class="time">${dur(timeFor(s))}</span>
-      </div>
-      <h3>${esc(s.name)}</h3>
-      <p>${esc(s.desc)}</p>
-      <div class="svc-price"><small>${esc(currentVehicle.name)} · a partir de</small>${money(priceFor(s))}</div>
-      <button class="svc-btn" data-book data-service="${s.id}">Agendar</button>
-    </article>
-  `).join("");
-
-  if (flash){
-    el.classList.add("flash-prices");
-    setTimeout(() => el.classList.remove("flash-prices"), 420);
-  }
-}
-
-/* ---------- render: card rápido do hero ---------- */
-function renderHeroQuick(){
-  $("#quickList").innerHTML = SITE.services.slice(0,4).map(s => `
-    <button class="quick-item" data-book data-service="${s.id}">
-      <span>
-        <b>${esc(s.name)}</b>
-        <small>${dur(timeFor(s))} · ${esc(currentVehicle.name)}</small>
-      </span>
-      <span class="price">${money(priceFor(s))}</span>
-    </button>
-  `).join("");
-}
-
-/* ---------- barra fixa mobile ---------- */
-function renderBar(){
-  const cheapest = Math.min(...SITE.services.map(s => priceFor(s)));
-  const simples = SITE.services.find(s => s.id === "simples");
-  $("#barPrice").textContent = "A partir de " + money(cheapest);
-  $("#barTime").textContent = "Lavagem em " + dur(timeFor(simples));
-}
-
-function setVehicle(v, opts = {}){
-  if (!v) return;
-  currentVehicle = v;
-  try { localStorage.setItem("caprichoso_vehicle", v.id); } catch (e) {}
-  renderVehicleOptions();
-  renderServices(!!opts.flash);
-  renderHeroQuick();
-  renderBar();
-}
-
-renderVehicleOptions();
-renderServices();
-renderHeroQuick();
-renderBar();
-
-$("#vehicleOptions").addEventListener("click", e => {
-  const b = e.target.closest("[data-vehicle]");
-  if (!b) return;
-  setVehicle(SITE.vehicles.find(v => v.id === b.dataset.vehicle), { flash:true });
-});
-
-/* ---------- render: avaliações ---------- */
-$("#reviews").innerHTML = SITE.reviews.map(r => {
-  const initials = r.name.split(" ").map(n => n[0]).slice(0,2).join("");
-  return `
-  <article class="review">
-    <span class="stars" aria-label="5 de 5 estrelas">★★★★★</span>
-    <p>“${esc(r.text)}”</p>
-    <div class="review-author">
-      <span class="avatar" aria-hidden="true">${esc(initials)}</span>
-      <span><b>${esc(r.name)}</b><small>${esc(r.car)}</small></span>
-      <span class="g-badge">Google</span>
-    </div>
-  </article>`;
-}).join("");
-
-/* ---------- render: FAQ ---------- */
-$("#faq").innerHTML = SITE.faq.map(([q,a]) => `
-  <details>
-    <summary>${esc(q)}</summary>
-    <div class="answer">${esc(a)}</div>
-  </details>
-`).join("");
-
-/* ---------- horário de funcionamento ---------- */
-function renderHours(){
-  const today = new Date().getDay();
-  $("#hoursTable").innerHTML = [1,2,3,4,5,6,0].map(d => {
-    const h = SITE.hours[d];
-    const label = h ? `${String(h[0]).padStart(2,"0")}h – ${String(h[1]).padStart(2,"0")}h` : "Fechado";
-    return `<tr class="${d===today?"today":""}"><td>${WEEK[d]}</td><td>${label}</td></tr>`;
-  }).join("");
-}
-renderHours();
-
-/* ---------- status aberto/fechado ---------- */
-function updateStatus(){
-  const now = new Date();
-  const h = SITE.hours[now.getDay()];
-  const el = $("#openStatus");
-  const mins = now.getHours()*60 + now.getMinutes();
-  let open = false, text = "";
-
-  if (h) {
-    open = mins >= h[0]*60 && mins < h[1]*60;
-    if (open) text = `Aberto agora · fecha às ${h[1]}h`;
-    else if (mins < h[0]*60) text = `Abre hoje às ${h[0]}h`;
-    else {
-      const next = nextOpenDay(now.getDay());
-      text = `Fechado · abre ${WEEK[next].toLowerCase()} às ${SITE.hours[next][0]}h`;
-    }
-  } else {
-    const next = nextOpenDay(now.getDay());
-    text = `Fechado hoje · abre ${WEEK[next].toLowerCase()} às ${SITE.hours[next][0]}h`;
-  }
-
-  el.classList.toggle("closed", !open);
-  el.innerHTML = `<span class="dot" aria-hidden="true"></span><span>${text}</span>`;
-  el.setAttribute("aria-label", text);
-}
-function nextOpenDay(from){
-  for (let i=1;i<=7;i++){ const d=(from+i)%7; if (SITE.hours[d]) return d; }
-  return 1;
-}
-updateStatus();
-setInterval(updateStatus, 60000);
-
-/* ---------- mapa ---------- */
-$("#mapFrame").src = "https://www.google.com/maps?q=" + encodeURIComponent(SITE.mapQuery) + "&output=embed&z=14";
-
-/* ---------- ano ---------- */
-$("#year").textContent = new Date().getFullYear();
-
-/* ---------- antes/depois ---------- */
-const ba = $("#ba");
-ba.querySelector("input").addEventListener("input", e => ba.style.setProperty("--p", e.target.value + "%"));
-
-/* ---------- header ao rolar ---------- */
-const topBar = $("#top");
-const onScroll = () => topBar.classList.toggle("scrolled", window.scrollY > 16);
-onScroll();
-addEventListener("scroll", onScroll, { passive:true });
-
-/* ---------- reveal ---------- */
-if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-  const io = new IntersectionObserver(entries => {
-    entries.forEach(en => { if (en.isIntersecting){ en.target.classList.add("in"); io.unobserve(en.target); } });
-  }, { threshold:.12 });
-  document.querySelectorAll(".reveal").forEach(el => io.observe(el));
-} else {
-  document.querySelectorAll(".reveal").forEach(el => el.classList.add("in"));
-}
-
-/* =========================================================
-   CHAT DE AGENDAMENTO
-   Fluxo determinístico: serviço → dia → horário → nome → confirmação
-   ========================================================= */
-const chat = $("#chat"), chatBody = $("#chatBody"), chatQuick = $("#chatQuick");
-const chatInput = $("#chatInput"), chatSend = $("#chatSend"), chatForm = $("#chatForm");
-const fab = $("#chatFab"), mobileBar = $("#mobileBar");
-
-const state = { step:"veiculo", vehicle:null, service:null, date:null, time:null, name:"", pendingService:null };
-
-function openChat(serviceId){
-  chat.hidden = false;
-  fab.setAttribute("aria-expanded", "true");
-  mobileBar.style.display = "none";
-  if (matchMedia("(max-width:760px)").matches) document.body.style.overflow = "hidden";
-  if (serviceId) {
-    resetFlow(SITE.services.find(s => s.id === serviceId));
-  } else if (!chatBody.childElementCount) {
-    resetFlow();
-  }
-  setTimeout(() => chatInput.focus({ preventScroll:true }), 80);
-}
-
-function closeChat(){
-  chat.hidden = true;
-  fab.setAttribute("aria-expanded", "false");
-  mobileBar.style.display = "";
-  document.body.style.overflow = "";
-  fab.focus({ preventScroll:true });
-}
-
-fab.addEventListener("click", () => chat.hidden ? openChat() : closeChat());
-$("#chatClose").addEventListener("click", closeChat);
-addEventListener("keydown", e => { if (e.key === "Escape" && !chat.hidden) closeChat(); });
-
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-book]");
-  if (!b) return;
-  e.preventDefault();
-  openChat(b.dataset.service || null);
-});
-
-function resetFlow(pendingService){
-  state.step = "veiculo";
-  state.vehicle = null; state.service = null; state.date = null; state.time = null; state.name = "";
-  state.pendingService = pendingService || null;
-  chatBody.innerHTML = "";
-  chatQuick.innerHTML = "";
-  chatInput.value = "";
-  setInput(false);
-  const intro = pendingService
-    ? `Oi! 👋 Você escolheu <b>${esc(pendingService.name)}</b>. Antes, qual é o seu carro?`
-    : `Oi! 👋 Aqui é a <b>${SITE.brand}</b>. Vou te ajudar a agendar em 30 segundos.<br><b>Qual é o seu carro?</b>`;
-  botSay(intro, vehicleChips());
-}
-
-function setInput(enabled, placeholder){
-  chatInput.disabled = !enabled;
-  chatSend.disabled = !enabled;
-  chatInput.placeholder = placeholder || "Digite sua resposta…";
-}
-
-function scrollBottom(){ chatBody.scrollTop = chatBody.scrollHeight; }
-
-function addMsg(html, who="bot"){
-  const d = document.createElement("div");
-  d.className = "msg " + who;
-  d.innerHTML = html; // conteúdo interno controlado; entradas do usuário passam por esc()
-  chatBody.appendChild(d);
-  scrollBottom();
-  return d;
-}
-
-function typing(){
-  const t = document.createElement("div");
-  t.className = "typing";
-  t.innerHTML = "<i></i><i></i><i></i>";
-  chatBody.appendChild(t);
-  scrollBottom();
-  return t;
-}
-
-function botSay(html, quick, delay=420){
-  const t = typing();
-  setTimeout(() => {
-    t.remove();
-    addMsg(html, "bot");
-    renderQuick(quick);
-  }, delay);
-}
-
-function renderQuick(items){
-  chatQuick.innerHTML = "";
-  (items || []).forEach(item => {
-    const b = document.createElement("button");
-    b.className = "quick";
-    b.type = "button";
-    b.textContent = item.label;
-    b.addEventListener("click", () => { item.run(); });
-    chatQuick.appendChild(b);
-  });
-  scrollBottom();
-}
-
-function vehicleChips(){
-  return SITE.vehicles.map(v => ({ label: v.name, run: () => selectVehicle(v) }));
-}
-
-function serviceChips(){
-  return SITE.services.map(s => ({
-    label: `${s.name} · ${money(priceFor(s, state.vehicle))}`,
-    run: () => selectService(s)
-  })).concat([{ label:"Só tenho uma dúvida", run: askDoubt }]);
-}
-
-function selectVehicle(v){
-  state.vehicle = v;
-  setVehicle(v);
-  addMsg(esc(v.name), "user");
-
-  if (state.pendingService){
-    const svc = state.pendingService;
-    state.pendingService = null;
-    startService(svc);
-  } else {
-    botSay(`Beleza! Para um <b>${esc(v.name)}</b>, qual serviço?`, serviceChips());
-    state.step = "servico";
-    setInput(false);
-  }
-}
-
-function selectService(svc){
-  addMsg(esc(svc.name), "user");
-  startService(svc);
-}
-
-function startService(svc){
-  state.service = svc;
-  botSay(
-    `<b>${esc(svc.name)}</b> — ${money(priceFor(svc, state.vehicle))} · ${dur(timeFor(svc, state.vehicle))}.<br>Para qual dia você quer?`,
-    dayChips()
-  );
-  state.step = "dia";
-  setInput(false);
-}
-
-function dayChips(){
-  const days = [];
-  const today = new Date();
-  for (let i=0; i<9 && days.length<5; i++){
-    const d = new Date(today);
-    d.setDate(today.getDate()+i);
-    if (!SITE.hours[d.getDay()]) continue;
-    if (slotsFor(d).length === 0) continue;
-    days.push(d);
-  }
-  return days.map(d => ({ label: dayLabel(d), run: () => selectDay(d) }));
-}
-
-function dayLabel(d){
-  const today = new Date();
-  const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const diff = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - base) / 86400000);
-  if (diff === 0) return "Hoje";
-  if (diff === 1) return "Amanhã";
-  return WEEK[d.getDay()].slice(0,3) + " " + String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0");
-}
-
-function busy(d){
-  const k = d.toISOString().slice(0,13);
-  let h = 0;
-  for (const c of k) h = (h*31 + c.charCodeAt(0)) % 997;
-  return h % 5 === 0; // ~20% ocupado (simulação até plugar a agenda real)
-}
-
-function slotsFor(day){
-  const h = SITE.hours[day.getDay()];
-  if (!h) return [];
-  const out = [];
-  const now = new Date();
-  const need = state.service ? timeFor(state.service, state.vehicle || currentVehicle) : 30;
-  for (let m = h[0]*60; m + need <= h[1]*60; m += 30){
-    const d = new Date(day);
-    d.setHours(Math.floor(m/60), m%60, 0, 0);
-    if (d <= now) continue;
-    if (busy(d)) continue;
-    out.push(d);
-  }
-  return out;
-}
-
-function selectDay(d){
-  state.date = d;
-  addMsg(dayLabel(d), "user");
-  const slots = slotsFor(d);
-  if (!slots.length){
-    botSay("Esse dia lotou 😕 Quer tentar outro?", dayChips());
-    return;
-  }
-  botSay(`Tenho estes horários em <b>${dayLabel(d)}</b>:`, slots.slice(0,8).map(t => ({
-    label: String(t.getHours()).padStart(2,"0") + ":" + String(t.getMinutes()).padStart(2,"0"),
-    run: () => selectTime(t)
-  })));
-  state.step = "hora";
-  setInput(false);
-}
-
-function selectTime(t){
-  state.time = t;
-  addMsg(String(t.getHours()).padStart(2,"0") + ":" + String(t.getMinutes()).padStart(2,"0"), "user");
-  botSay("Combinado! Como você se chama?", null);
-  state.step = "nome";
-  setInput(true, "Seu nome");
-  setTimeout(() => chatInput.focus({ preventScroll:true }), 450);
-}
-
-function confirmSummary(){
-  const s = state.service, d = state.date, t = state.time, v = state.vehicle;
-  const dateStr = String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0");
-  const timeStr = String(t.getHours()).padStart(2,"0") + ":" + String(t.getMinutes()).padStart(2,"0");
-  return `<div class="sum">
-      <span><i>Veículo</i> ${esc(v.name)}</span>
-      <span><i>Serviço</i> ${esc(s.name)}</span>
-      <span><i>Data</i> ${dateStr} às ${timeStr}</span>
-      <span><i>Duração</i> ${dur(timeFor(s, v))}</span>
-      <span><i>Valor</i> <b>${money(priceFor(s, v))}</b></span>
-      <span><i>Nome</i> ${esc(state.name)}</span>
-    </div>`;
-}
-
-function askConfirm(){
-  state.step = "confirmar";
-  botSay("Confere se está tudo certo?" + confirmSummary(), [
-    { label:"Confirmar agendamento", run: finish },
-    { label:"Trocar horário", run: () => { resetToDays(); } },
-    { label:"Trocar veículo", run: changeVehicle }
-  ]);
-}
-
-function changeVehicle(){
-  state.pendingService = state.service;
-  state.service = null; state.date = null; state.time = null;
-  state.step = "veiculo";
-  botSay("Sem problema. Qual é o seu carro?", vehicleChips());
-  setInput(false);
-}
-
-function resetToDays(){
-  state.date = null; state.time = null;
-  botSay("Sem problema. Para qual dia?", dayChips());
-  state.step = "dia";
-  setInput(false);
-}
-
-function finish(){
-  const s = state.service, d = state.date, t = state.time, v = state.vehicle;
-  const dateStr = String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0");
-  const timeStr = String(t.getHours()).padStart(2,"0") + ":" + String(t.getMinutes()).padStart(2,"0");
-  const msg = `Olá! Quero confirmar meu agendamento:\n• Veículo: ${v.name}\n• Serviço: ${s.name}\n• Data: ${dateStr} às ${timeStr}\n• Valor: ${money(priceFor(s, v))}\n• Nome: ${state.name}`;
-  const wa = "https://wa.me/" + SITE.whatsapp + "?text=" + encodeURIComponent(msg);
-
-  chatQuick.innerHTML = "";
-  const card = `<div class="sum">
-      <span><i>Veículo</i> ${esc(v.name)}</span>
-      <span><i>Serviço</i> ${esc(s.name)}</span>
-      <span><i>Data</i> ${dateStr} às ${timeStr}</span>
-      <span><i>Duração</i> ${dur(timeFor(s, v))}</span>
-      <span><i>Valor</i> <b>${money(priceFor(s, v))}</b></span>
-    </div>
-    <a class="btn btn-sm" style="margin-top:10px;width:100%" href="${wa}" target="_blank" rel="noopener">Confirmar no WhatsApp</a>
-    <a class="chat-wa" href="https://wa.me/${SITE.whatsapp}" target="_blank" rel="noopener">Prefiro falar com uma pessoa</a>`;
-
-  botSay(`Prontinho, <b>${esc(state.name)}</b>! ✅<br>Seu horário está reservado. Toque abaixo para confirmar no WhatsApp e receber o lembrete.${card}`, null);
-  state.step = "fim";
-  setInput(false, "Agendamento enviado");
-}
-
-function askDoubt(){
-  addMsg("Só tenho uma dúvida", "user");
-  botSay("Claro! Pode escrever aqui embaixo que eu respondo — ou, se preferir, falo com você no WhatsApp.", [
-    { label:"Chamar no WhatsApp", run: () => window.open("https://wa.me/" + SITE.whatsapp, "_blank", "noopener") }
-  ]);
-  state.step = "duvida";
-  setInput(true, "Escreva sua dúvida");
-}
-
-/* envio de texto */
-chatForm.addEventListener("submit", e => {
-  e.preventDefault();
-  const val = chatInput.value.trim();
-  if (!val) return;
-  chatInput.value = "";
-
-  if (state.step === "nome"){
-    state.name = val;
-    addMsg(esc(val), "user");
-    setInput(false);
-    askConfirm();
-  } else if (state.step === "duvida"){
-    addMsg(esc(val), "user");
-    botSay("Anotado! Já chamo alguém da equipe. Se quiser adiantar, é só tocar abaixo.", [
-      { label:"Chamar no WhatsApp", run: () => window.open("https://wa.me/" + SITE.whatsapp + "?text=" + encodeURIComponent("Olá! " + val), "_blank", "noopener") },
-      { label:"Voltar ao agendamento", run: () => resetFlow() }
-    ]);
-    setInput(false);
-  } else {
-    addMsg(esc(val), "user");
-    botSay("Para agendar é só escolher uma das opções acima 😉", null);
-  }
-});
-</script>
+<script src="config.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
