@@ -71,8 +71,8 @@ criado e **não vai para o git**.
 ### Dar acesso ao painel para alguém
 
 1. Authentication > Users > **Add user** (marque **Auto Confirm User**)
-2. Rode `supabase/grant-admin.sql` no SQL Editor, trocando o e-mail
-   (e o slug, se não for o `caprichoso`)
+2. Rode `supabase/grant-admin.sql` no SQL Editor — ele libera o usuário
+   criado por último como `owner` do `caprichoso`
 3. Entre em `/admin` com o e-mail e a senha criados.
 
 Não existe cadastro público no painel: sem uma linha em `memberships`, o login

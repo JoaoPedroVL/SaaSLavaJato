@@ -1,10 +1,10 @@
 -- =============================================================
--- Libera o acesso ao painel para um usuário já criado.
--- Rode no SQL Editor do Supabase depois de criar o usuário em
+-- Libera o acesso ao painel.
+-- Rode no SQL Editor do Supabase DEPOIS de criar o usuário em
 -- Authentication > Users (marque "Auto Confirm User").
 --
--- 1. Troque o e-mail abaixo pelo e-mail do dono do lava-jato.
--- 2. Troque o slug se não for o 'caprichoso'.
+-- Por padrão libera o usuário MAIS RECENTE criado, como 'owner'
+-- do lava-jato 'caprichoso'. Não precisa trocar nada.
 --
 -- role: 'owner' ou 'staff' (hoje os dois enxergam a mesma coisa;
 -- a distinção fica pronta para quando houver permissões diferentes).
@@ -13,6 +13,23 @@ insert into public.memberships (user_id, tenant_id, role)
 select u.id, t.id, 'owner'
 from auth.users u
 cross join public.tenants t
-where u.email = 'dono@caprichoso.com'
-  and t.slug = 'caprichoso'
+where t.slug = 'caprichoso'
+  and u.id = (select id from auth.users order by created_at desc limit 1)
 on conflict (user_id, tenant_id) do nothing;
+
+-- Conferir o vínculo criado:
+-- select u.email, t.name, m.role
+-- from public.memberships m
+-- join auth.users u on u.id = m.user_id
+-- join public.tenants t on t.id = m.tenant_id;
+
+-- =============================================================
+-- Alternativa: liberar por e-mail (troque o e-mail antes de rodar)
+-- =============================================================
+-- insert into public.memberships (user_id, tenant_id, role)
+-- select u.id, t.id, 'owner'
+-- from auth.users u
+-- cross join public.tenants t
+-- where u.email = 'dono@caprichoso.com'
+--   and t.slug = 'caprichoso'
+-- on conflict (user_id, tenant_id) do nothing;
