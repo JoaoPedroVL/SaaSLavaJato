@@ -52,6 +52,9 @@ supabase db push --include-seed
 # recriar o banco local (precisa do Docker)
 supabase start
 supabase db reset
+
+# limpar agendamentos de teste (rodar no SQL Editor do Supabase)
+# supabase/cleanup-test-data.sql
 ```
 
 ### Chaves

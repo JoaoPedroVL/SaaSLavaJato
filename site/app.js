@@ -658,6 +658,12 @@
 
     if (!slots.length) {
       const days = await loadDays(state.service);
+      if (!days.length) {
+        await botSay("Esse dia lotou e não achei outro horário livre 😕 Chame no WhatsApp que a gente encaixa você.", [
+          { label: "Chamar no WhatsApp", run: () => window.open(waLink(`Olá! Quero agendar ${state.service.name}.`), "_blank", "noopener") }
+        ]);
+        return;
+      }
       await botSay("Esse dia lotou 😕 Quer tentar outro?", days.map(d => ({ label: dayLabel(d), run: () => selectDay(d) })));
       return;
     }
@@ -711,14 +717,41 @@
     await botSay("Confere se está tudo certo?" + confirmSummary(), [
       { label: "Confirmar agendamento", run: finish },
       { label: "Trocar horário", run: changeTime },
-      { label: "Trocar veículo", run: changeVehicle }
+      { label: "Trocar veículo", run: changeVehicle },
+      { label: "Trocar serviço", run: changeService },
+      { label: "Corrigir meus dados", run: fixData }
     ]);
+  }
+
+  async function changeService() {
+    state.service = null;
+    state.dateStr = null;
+    state.slot = null;
+    state.pendingService = null;
+    state.step = "servico";
+    setInput(false);
+    await botSay("Sem problema. Qual serviço você prefere?", serviceChips());
+  }
+
+  async function fixData() {
+    state.name = "";
+    state.phone = "";
+    state.step = "nome";
+    setInput(true, "Seu nome");
+    await botSay("Sem problema. Como você se chama?", null);
+    setTimeout(() => chatInput.focus({ preventScroll: true }), 400);
   }
 
   async function changeTime() {
     state.slot = null;
     state.step = "dia";
     const days = await loadDays(state.service);
+    if (!days.length) {
+      await botSay("Não achei outro horário livre 😕 Chame no WhatsApp que a gente encaixa você.", [
+        { label: "Chamar no WhatsApp", run: () => window.open(waLink(`Olá! Quero agendar ${state.service.name}.`), "_blank", "noopener") }
+      ]);
+      return;
+    }
     await botSay("Sem problema. Para qual dia?", days.map(d => ({ label: dayLabel(d), run: () => selectDay(d) })));
   }
 
