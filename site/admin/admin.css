@@ -297,6 +297,76 @@ input[type="search"]{min-width:260px}
   .booking .b-actions{justify-content:flex-start}
   .login-card{padding:22px}
 }
+/* ---------- desktop: tudo um pouco maior ---------- */
+@media (min-width:900px){
+  body{font-size:16.5px}
+  .wrap{max-width:1180px;padding:28px 26px 70px}
+  .topbar-inner{max-width:1180px;padding:13px 26px}
+  .brand-mark{width:42px;height:42px;border-radius:12px;font-size:21px}
+  .brand b{font-size:16.5px}
+  .brand small{font-size:12.5px}
+  .user-email{font-size:13.5px}
+  .btn-ghost{font-size:14px;padding:9px 14px}
+
+  .tabs{max-width:1180px;padding:0 26px;top:68px}
+  .tabs button{font-size:15.5px;padding:16px 18px}
+
+  h1,.day-head h1,.page-title{font-size:32px}
+  h2{font-size:19.5px}
+  .toolbar{margin-bottom:22px}
+  input[type="date"],input[type="search"],.select{font-size:15px;padding:11px 14px}
+  input[type="search"]{min-width:320px}
+  .icon-btn{width:42px;height:42px;font-size:23px}
+  .btn-sm{font-size:14px;padding:10px 15px}
+  .check{font-size:14.5px}
+
+  .day-head{margin-bottom:20px}
+  #daySummary{font-size:16px}
+  .agenda{gap:14px}
+  .booking{padding:18px 22px;grid-template-columns:76px 1fr auto auto;gap:20px}
+  .booking .b-time b{font-size:23px}
+  .booking .b-time small{font-size:13.5px}
+  .booking .b-main>b{font-size:18px}
+  .booking .b-main a{font-size:14px}
+  .booking .b-detail{font-size:15.5px;margin-top:3px}
+  .booking .b-code{font-size:12.5px}
+  .booking .b-price{font-size:19px}
+  .pill{font-size:12.5px;padding:5px 11px}
+  .booking .b-side{min-width:260px}
+  .booking .b-actions .btn-sm{padding:9px 14px}
+
+  .client-row{padding:16px 20px;gap:18px}
+  .client-row .c-name{font-size:16px}
+  .client-row .c-phone{font-size:14px}
+  .client-row .c-meta{font-size:14.5px}
+  .client-row .c-spent{font-size:17px}
+  .client-row.head{font-size:12px;padding:0 20px 4px}
+
+  .kpi{padding:20px}
+  .kpi span{font-size:12.5px}
+  .kpi b{font-size:34px}
+  .kpi small{font-size:13px}
+  .card{padding:22px}
+  .rank-item b{font-size:15px}
+  .rank-item span{font-size:13.5px}
+  .mini-item{padding:12px 0}
+  .mini-item .m-time{font-size:14.5px}
+  .mini-item .m-main b{font-size:15px}
+  .mini-item .m-main small{font-size:13px}
+  .mini-item .m-price{font-size:14.5px}
+
+  .empty{padding:56px 24px;font-size:16px}
+  .empty b{font-size:18px}
+  .toast{font-size:14.5px;padding:13px 20px}
+
+  .login-card{max-width:440px;padding:34px}
+  .login-card h1{font-size:34px}
+  .login-card .lead{font-size:15.5px}
+  .login-card label{font-size:14px}
+  .login-card input{padding:13px 15px;font-size:16px}
+  .login-card .hint{font-size:13.5px}
+}
+
 @media (prefers-reduced-motion:reduce){
   .skeleton{animation:none}
 }
