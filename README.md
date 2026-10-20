@@ -7,6 +7,7 @@ SaaS de agenda e agendamento por WhatsApp para lava-jatos.
 - `site/index.html` — landing page (HTML + CSS, sem build)
 - `site/app.js` — carrega dados do Supabase, monta a página e conduz o chat
 - `site/config.js` — URL, anon key e slug do lava-jato
+- `site/admin/` — painel (login, agenda, clientes e resumo)
 - `supabase/` — schema do banco (migrações + seed)
 - `referencias/` — imagens e HTML usados como base
 
@@ -25,7 +26,9 @@ python3 -m http.server 8080
 
 Abra <http://localhost:8080>. Trocar de lava-jato: <http://localhost:8080/?loja=demo-b>.
 
-> Use o servidor (não `file://`): o chat faz `fetch` na API do Supabase.
+Painel: <http://localhost:8080/admin/>.
+
+> Use o servidor (não `file://`): o chat e o painel fazem `fetch` na API do Supabase.
 
 ## Banco de dados
 
@@ -65,10 +68,10 @@ criado e **não vai para o git**.
 - `SUPABASE_ANON_KEY` — pública, pode ir para o navegador
 - `SUPABASE_SERVICE_ROLE_KEY` — **nunca** no navegador
 
-### Dar acesso ao admin para alguém
+### Dar acesso ao painel para alguém
 
-1. Crie o usuário em Authentication > Users
-2. Copie o UUID do usuário e rode no SQL Editor:
+1. Authentication > Users > **Add user** (marque **Auto Confirm User**)
+2. Copie o UUID e rode no SQL Editor:
 
 ```sql
 insert into public.memberships (user_id, tenant_id, role)
@@ -78,6 +81,11 @@ values (
   'owner'
 );
 ```
+
+3. Entre em `/admin` com o e-mail e a senha criados.
+
+Não existe cadastro público no painel: sem uma linha em `memberships`, o login
+até funciona, mas nenhum dado aparece.
 
 ### O que já está protegido
 
@@ -102,6 +110,19 @@ values (
 - Slider antes/depois, prova social, FAQ, mapa, SEO local, barra fixa no celular
 - Se o banco não responder, a página continua de pé e oferece o WhatsApp
 
+## O que o painel já faz
+
+- Login por e-mail e senha (Supabase Auth); cada usuário vê só o lava-jato do
+  qual é membro, via RLS
+- Agenda do dia: horário, cliente, WhatsApp, veículo, serviço, código e valor
+- Ações por agendamento: confirmar, concluir, marcar falta, cancelar e reabrir
+- Clientes: busca por nome/telefone, visitas concluídas, último atendimento,
+  total gasto e histórico
+- Resumo por período (hoje/semana/mês): agendamentos, faturamento previsto e
+  realizado, ticket médio, ocupação, serviços mais vendidos e próximos horários
+- Agenda se atualiza sozinha a cada minuto e funciona no celular
+- Se o usuário tiver vínculo com mais de um lava-jato, aparece o seletor
+
 ## O que ainda é fixo (por lava-jato)
 
 Está em `site/index.html` / `site/app.js`, porque é identidade visual e conteúdo
@@ -118,7 +139,8 @@ e de `business_hours`.
 
 1. ~~Receber fotos reais em `site/assets/`~~ ✅ (antes.jpg / depois.jpg)
 2. Trocar o WhatsApp e os preços reais no banco (seed ou admin)
-3. Admin: agenda, clientes, dashboard com funil e previsão de faturamento
+3. ~~Admin: agenda, clientes, resumo~~ ✅ (falta criar agendamento pelo painel)
 4. WhatsApp: confirmação e lembretes automáticos
 5. Rotas por lava-jato (`/caprichoso`) em vez de `?loja=`
 6. Tela de gerenciar agendamento (remarcar/cancelar pelo código)
+7. Capacidade (boxes), anti-spam no `create_booking` e aviso de LGPD

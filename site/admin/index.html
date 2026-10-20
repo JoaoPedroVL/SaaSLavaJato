@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Painel do lava-jato</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0a1526">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a1526'/%3E%3Cpath d='M32 12c7 10 12 16 12 22a12 12 0 0 1-24 0c0-6 5-12 12-22z' fill='%23ffc21a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="brand">
+      <span class="brand-mark" id="loginMark">L</span>
+      <span><b>Painel</b><small>Lava-jato</small></span>
+    </div>
+
+    <h1>Entrar</h1>
+    <p class="lead">Use o acesso criado pelo administrador do lava-jato.</p>
+
+    <label for="email">E-mail</label>
+    <input id="email" name="email" type="email" autocomplete="username" required placeholder="voce@email.com">
+
+    <label for="password">Senha</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+
+    <p class="form-error" id="loginError" role="alert" hidden></p>
+
+    <button class="btn btn-block" type="submit" id="loginBtn">Entrar</button>
+    <p class="hint">Sem acesso? Fale com quem administra o sistema.</p>
+  </form>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="appView" hidden>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark" id="brandMark">L</span>
+        <span>
+          <b id="tenantName">Carregando…</b>
+          <small>Painel do lava-jato</small>
+        </span>
+      </div>
+
+      <div class="top-actions">
+        <select id="tenantSwitch" class="tenant-switch" aria-label="Lava-jato" hidden></select>
+        <span class="user-email" id="userEmail"></span>
+        <button class="btn-ghost" id="logoutBtn" type="button">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Seções do painel">
+    <button type="button" data-tab="agenda" class="active" aria-current="page">Agenda</button>
+    <button type="button" data-tab="clientes">Clientes</button>
+    <button type="button" data-tab="resumo">Resumo</button>
+  </nav>
+
+  <main class="wrap">
+
+    <!-- ---------- AGENDA ---------- -->
+    <section id="tab-agenda" class="tab-panel">
+      <div class="toolbar">
+        <div class="date-nav">
+          <button type="button" id="prevDay" class="icon-btn" aria-label="Dia anterior">‹</button>
+          <input type="date" id="dayInput" aria-label="Dia da agenda">
+          <button type="button" id="nextDay" class="icon-btn" aria-label="Próximo dia">›</button>
+          <button type="button" id="todayBtn" class="btn-sm ghost">Hoje</button>
+        </div>
+
+        <div class="toolbar-right">
+          <label class="check">
+            <input type="checkbox" id="showCancelled">
+            <span>Cancelados</span>
+          </label>
+          <button type="button" id="refreshBtn" class="btn-sm ghost">Atualizar</button>
+        </div>
+      </div>
+
+      <div class="day-head">
+        <h1 id="dayTitle">—</h1>
+        <p id="daySummary" class="muted">Carregando…</p>
+      </div>
+
+      <div id="agendaList" class="agenda" aria-live="polite"></div>
+    </section>
+
+    <!-- ---------- CLIENTES ---------- -->
+    <section id="tab-clientes" class="tab-panel" hidden>
+      <div class="toolbar">
+        <input type="search" id="clientSearch" placeholder="Buscar por nome ou telefone" aria-label="Buscar cliente">
+        <span id="clientCount" class="muted"></span>
+      </div>
+      <div id="clientList" class="clients" aria-live="polite"></div>
+    </section>
+
+    <!-- ---------- RESUMO ---------- -->
+    <section id="tab-resumo" class="tab-panel" hidden>
+      <div class="toolbar">
+        <div>
+          <h1 class="page-title">Resumo</h1>
+          <p class="muted" id="periodLabel">—</p>
+        </div>
+        <select id="periodSelect" class="select" aria-label="Período">
+          <option value="today">Hoje</option>
+          <option value="week" selected>Esta semana</option>
+          <option value="month">Este mês</option>
+        </select>
+      </div>
+
+      <div id="kpis" class="kpis" aria-live="polite"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2>Serviços mais vendidos</h2>
+          <div id="topServices" class="rank"></div>
+        </div>
+        <div class="card">
+          <h2>Próximos agendamentos</h2>
+          <div id="upcoming" class="mini-list"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ================= CLIENTE (modal) ================= -->
+<div class="modal" id="clientModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="clientModalName">
+    <button type="button" class="modal-close" id="clientModalClose" aria-label="Fechar">×</button>
+    <h2 id="clientModalName">—</h2>
+    <p class="muted" id="clientModalMeta"></p>
+    <div id="clientModalBody" class="mini-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="config.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
