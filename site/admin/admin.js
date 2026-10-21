@@ -71,6 +71,8 @@
   let clientsCache = null;
   let boxes = [];
   let catalog = null;
+  let svcEditor = { loaded: false, services: [], prices: [], vehicles: [] };
+  let svcCategorySupported = true;
   let editing = null;
   let bkDay = { date: null, bookings: [], blocks: [] };
   let bookingSeq = 0;
@@ -380,6 +382,8 @@
     tenant.role = m.role;
     clientsCache = null;
     catalog = null;
+    svcEditor = { loaded: false, services: [], prices: [], vehicles: [] };
+    svcCategorySupported = true;
     boxes = [];
     bkDay = { date: null, bookings: [], blocks: [] };
 
@@ -422,7 +426,18 @@
     if (tab === "agenda") renderAgenda();
     if (tab === "clientes") renderClients();
     if (tab === "resumo") renderSummary();
-    if (tab === "ajustes") renderBoxes();
+    if (tab === "ajustes") {
+      renderBoxes();
+      if (!svcEditor.loaded) {
+        $("#serviceList").innerHTML = `<div class="empty">Carregando serviços...</div>`;
+      }
+      loadServiceEditor()
+        .then(renderServicesAdmin)
+        .catch(err => {
+          $("#serviceList").innerHTML =
+            `<div class="empty">Não consegui carregar os serviços: ${esc(err.message)}</div>`;
+        });
+    }
   }
 
   document.querySelectorAll(".tabs button").forEach(b => {
@@ -945,9 +960,342 @@
   }
 
   const vehicleName = id => {
-    const v = catalog && catalog.vehicles.find(x => x.id === id);
+    const list = (catalog && catalog.vehicles) || svcEditor.vehicles || [];
+    const v = list.find(x => x.id === id);
     return v ? v.name : (id || "Veículo");
   };
+
+  /* =========================================================
+     SERVIÇOS (catálogo editável pelo dono)
+     ========================================================= */
+  function serviceComputedMinutes(base, factor) {
+    const total = (Number(base) || 0) * (Number(factor) || 1);
+    if (total <= 0) return 0;
+    return total >= 60 ? Math.round(total / 15) * 15 : Math.round(total / 5) * 5;
+  }
+
+  function serviceCentsInput(cents) {
+    return (Number(cents || 0) / 100).toFixed(2).replace(".", ",");
+  }
+
+  function parseServicePrice(raw) {
+    let s = String(raw || "").trim();
+    if (!s) return { empty: true };
+    if (s.includes("-")) return { error: true };
+    s = s.replace(/[^\d.,]/g, "");
+    if (!s) return { error: true };
+    if (s.includes(",")) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      const parts = s.split(".");
+      if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+        s = s.replace(/\./g, "");
+      }
+    }
+    const n = Number(s);
+    if (!Number.isFinite(n) || n < 0) return { error: true };
+    if (n === 0) return { empty: true };
+    return { cents: Math.round(n * 100) };
+  }
+
+  function showServiceError(message) {
+    const el = $("#svError");
+    el.textContent = message;
+    el.hidden = false;
+  }
+
+  async function loadServiceEditor(force) {
+    if (svcEditor.loaded && !force) return svcEditor;
+
+    const base = `services?tenant_id=eq.${tenant.id}`
+      + `&select=id,name,description,minutes,sort_order,active`;
+    const [prices, vehicles] = await Promise.all([
+      api(`service_prices?tenant_id=eq.${tenant.id}`
+        + `&select=service_id,vehicle_id,price_cents,minutes_override`),
+      api("vehicles?select=id,name,hint,time_factor&order=sort_order")
+    ]);
+
+    let services;
+    if (svcCategorySupported) {
+      try {
+        services = await api(base + ",category&order=sort_order,name");
+      } catch (err) {
+        // painel pode rodar antes da migração que cria services.category
+        if (!/category|column/i.test(err.message)) throw err;
+        svcCategorySupported = false;
+        services = await api(base + "&order=sort_order,name");
+      }
+    } else {
+      services = await api(base + "&order=sort_order,name");
+    }
+
+    svcEditor = {
+      loaded: true,
+      services: services || [],
+      prices: prices || [],
+      vehicles: vehicles || []
+    };
+    return svcEditor;
+  }
+
+  function renderServicesAdmin() {
+    const list = $("#serviceList");
+    if (!list) return;
+
+    if (!svcEditor.loaded) {
+      list.innerHTML = `<div class="empty">Carregando serviços...</div>`;
+      return;
+    }
+
+    if (!svcEditor.services.length) {
+      list.innerHTML = `<div class="empty"><b>Nenhum serviço cadastrado</b>
+        Cadastre o primeiro serviço para ele aparecer no site.
+        <div><button type="button" class="btn" data-svc-new>+ Novo serviço</button></div>
+      </div>`;
+      return;
+    }
+
+    list.innerHTML = svcEditor.services.map(s => {
+      const prices = svcEditor.prices
+        .filter(p => p.service_id === s.id)
+        .map(p => p.price_cents)
+        .filter(c => c > 0);
+      const min = prices.length ? Math.min(...prices) : 0;
+      const max = prices.length ? Math.max(...prices) : 0;
+      const range = !prices.length
+        ? "Sem preço"
+        : (min === max ? money(min) : `${money(min)}–${money(max)}`);
+
+      return `
+        <div class="service-row ${s.active ? "" : "archived"}" data-service="${s.id}">
+          <div class="s-main">
+            <b>${esc(s.name)}</b>
+            <div class="s-tags">
+              ${s.category ? `<span class="svc-cat-badge">${esc(s.category)}</span>` : ""}
+              <span class="svc-state ${s.active ? "" : "off"}">${s.active ? "Ativo" : "Arquivado"}</span>
+            </div>
+            <small>${esc(s.description || "Sem descrição")}</small>
+          </div>
+          <div class="s-meta">
+            <b>${range}</b>
+            <small>${s.minutes} min base</small>
+          </div>
+          <div class="s-actions">
+            <button type="button" class="btn-sm" data-svc-edit>Editar</button>
+            <button type="button" class="btn-sm ${s.active ? "danger" : ""}" data-svc-toggle>${s.active ? "Arquivar" : "Reativar"}</button>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  function renderServicePriceRows(service) {
+    const base = Number($("#svMinutes").value) || 0;
+    $("#svPrices").innerHTML = svcEditor.vehicles.map(v => {
+      const price = service
+        ? svcEditor.prices.find(p => p.service_id === service.id && p.vehicle_id === v.id)
+        : null;
+      const computed = serviceComputedMinutes(base, v.time_factor);
+      const priceValue = price ? serviceCentsInput(price.price_cents) : "";
+      const durationValue = price && price.minutes_override ? price.minutes_override : "";
+      return `
+        <div class="price-row" data-vehicle="${esc(v.id)}">
+          <div class="v-name">
+            <b>${esc(v.name)}</b>
+            <small>${esc(v.hint || "")}</small>
+          </div>
+          <label>
+            <span>Preço</span>
+            <input data-price inputmode="decimal" placeholder="0,00" value="${priceValue}" aria-label="Preço ${esc(v.name)}">
+          </label>
+          <label>
+            <span>Duração</span>
+            <input data-duration type="number" min="0" step="5" placeholder="${computed}" value="${durationValue}" aria-label="Duração ${esc(v.name)}">
+          </label>
+        </div>`;
+    }).join("");
+  }
+
+  function refreshServiceDurations() {
+    const base = Number($("#svMinutes").value) || 0;
+    $("#svPrices").querySelectorAll(".price-row").forEach(row => {
+      const vehicle = svcEditor.vehicles.find(v => v.id === row.dataset.vehicle);
+      const input = row.querySelector("[data-duration]");
+      if (vehicle && input) input.placeholder = String(serviceComputedMinutes(base, vehicle.time_factor));
+    });
+  }
+
+  async function openServiceModal(service) {
+    try {
+      await loadServiceEditor();
+    } catch (err) {
+      toast("Não consegui carregar os serviços: " + err.message, true);
+      return;
+    }
+    if (!svcEditor.vehicles.length) {
+      toast("Nenhum tipo de veículo cadastrado.", true);
+      return;
+    }
+
+    closeAllModals();
+    serviceForm.reset();
+
+    const isEdit = !!service;
+    $("#svId").value = isEdit ? service.id : "";
+    $("#serviceTitle").textContent = isEdit ? "Editar serviço" : "Novo serviço";
+    $("#serviceSub").textContent = isEdit
+      ? "As mudanças valem para os próximos agendamentos."
+      : "O serviço aparece no site assim que tiver pelo menos um preço.";
+    $("#svName").value = isEdit ? service.name : "";
+    $("#svCategory").value = isEdit && service.category ? service.category : "";
+    $("#svDescription").value = isEdit ? (service.description || "") : "";
+    $("#svMinutes").value = isEdit ? service.minutes : 30;
+    $("#svOrder").value = isEdit
+      ? service.sort_order
+      : Math.max(0, ...svcEditor.services.map(s => Number(s.sort_order) || 0)) + 1;
+    $("#svActive").value = isEdit && !service.active ? "false" : "true";
+    $("#svError").hidden = true;
+    $("#svCategoryField").hidden = !svcCategorySupported;
+    renderServicePriceRows(isEdit ? service : null);
+    $("#svSave").disabled = false;
+    $("#svSave").textContent = "Salvar";
+    serviceModal.hidden = false;
+    setTimeout(() => $("#svName").focus(), 20);
+  }
+
+  async function saveService(e) {
+    e.preventDefault();
+
+    const serviceId = $("#svId").value;
+    const isEdit = !!serviceId;
+    const name = $("#svName").value.trim();
+    const category = svcCategorySupported ? $("#svCategory").value.trim() : "";
+    const description = $("#svDescription").value.trim();
+    const minutes = Number($("#svMinutes").value);
+    const order = Number($("#svOrder").value);
+    const active = $("#svActive").value !== "false";
+
+    if (!name) return showServiceError("Informe o nome do serviço.");
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      return showServiceError("Informe uma duração base válida.");
+    }
+    if (!Number.isFinite(order) || order < 0) {
+      return showServiceError("A ordem precisa ser zero ou maior.");
+    }
+
+    const rows = [];
+    let hasPrice = false;
+    for (const row of $("#svPrices").querySelectorAll(".price-row")) {
+      const vehicleId = row.dataset.vehicle;
+      const parsed = parseServicePrice(row.querySelector("[data-price]").value);
+      if (parsed.error) {
+        return showServiceError(`Preço inválido para ${vehicleName(vehicleId)}.`);
+      }
+      if (parsed.empty) continue;
+
+      hasPrice = true;
+      const durationRaw = row.querySelector("[data-duration]").value.trim();
+      let override = null;
+      if (durationRaw) {
+        const duration = Number(durationRaw);
+        if (!Number.isFinite(duration) || duration < 0) {
+          return showServiceError(`Duração inválida para ${vehicleName(vehicleId)}.`);
+        }
+        if (duration > 0) override = Math.round(duration);
+      }
+      rows.push({
+        tenant_id: tenant.id,
+        vehicle_id: vehicleId,
+        price_cents: parsed.cents,
+        minutes_override: override
+      });
+    }
+
+    if (!hasPrice) {
+      return showServiceError("Preencha o preço de pelo menos um veículo.");
+    }
+
+    const button = $("#svSave");
+    button.disabled = true;
+    button.textContent = "Salvando...";
+    $("#svError").hidden = true;
+
+    try {
+      const payload = {
+        name,
+        description: description || null,
+        minutes: Math.round(minutes),
+        sort_order: Math.round(order),
+        active
+      };
+      if (svcCategorySupported) payload.category = category || null;
+
+      let id = serviceId;
+      if (id) {
+        await api(`services?id=eq.${id}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        const created = await api("services", {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ ...payload, tenant_id: tenant.id })
+        });
+        id = created && created[0] && created[0].id;
+        if (!id) throw new Error("o serviço não retornou id");
+        $("#svId").value = id;
+      }
+
+      await api("service_prices?on_conflict=service_id,vehicle_id", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(rows.map(r => ({ ...r, service_id: id })))
+      });
+
+      const keep = new Set(rows.map(r => r.vehicle_id));
+      const remove = svcEditor.prices
+        .filter(p => p.service_id === id && !keep.has(p.vehicle_id))
+        .map(p => p.vehicle_id);
+      if (remove.length) {
+        await api(`service_prices?service_id=eq.${id}&vehicle_id=in.(${remove.join(",")})`, {
+          method: "DELETE"
+        });
+      }
+
+      catalog = null;
+      svcEditor.loaded = false;
+      await loadServiceEditor(true);
+      renderServicesAdmin();
+      closeAllModals();
+      toast(isEdit ? "Serviço atualizado." : "Serviço criado.");
+    } catch (err) {
+      showServiceError("Não consegui salvar: " + err.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = "Salvar";
+    }
+  }
+
+  async function toggleServiceActive(service) {
+    if (service.active && !confirm(`Arquivar "${service.name}"? Ele deixa de aparecer no site, mas o histórico fica.`)) {
+      return;
+    }
+    try {
+      await api(`services?id=eq.${service.id}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ active: !service.active })
+      });
+      catalog = null;
+      svcEditor.loaded = false;
+      await loadServiceEditor(true);
+      renderServicesAdmin();
+      toast(service.active ? "Serviço arquivado." : "Serviço reativado.");
+    } catch (err) {
+      toast("Não consegui alterar o serviço: " + err.message, true);
+    }
+  }
 
   /* =========================================================
      AGENDAMENTO (encaixe / remarcar)
@@ -955,18 +1303,22 @@
   const bookingModal = $("#bookingModal");
   const blockModal = $("#blockModal");
   const closeDayModal = $("#closeModal");
+  const serviceModal = $("#serviceModal");
   const bookingForm = $("#bookingForm");
+  const serviceForm = $("#serviceForm");
 
   function closeAllModals() {
     modal.hidden = true;
     bookingModal.hidden = true;
     blockModal.hidden = true;
     closeDayModal.hidden = true;
+    serviceModal.hidden = true;
     editing = null;
   }
 
   function anyModalOpen() {
-    return [modal, bookingModal, blockModal, closeDayModal].some(m => m && !m.hidden);
+    return [modal, bookingModal, blockModal, closeDayModal, serviceModal]
+      .some(m => m && !m.hidden);
   }
 
   addEventListener("keydown", e => {
@@ -981,9 +1333,27 @@
     if (e.key === "ArrowRight") { e.preventDefault(); setDay(addDays(currentDay, 1)); }
   });
 
-  [bookingModal, blockModal, closeDayModal].forEach(m => {
+  [bookingModal, blockModal, closeDayModal, serviceModal].forEach(m => {
     m.addEventListener("click", e => { if (e.target === m) closeAllModals(); });
   });
+
+  $("#newServiceBtn").addEventListener("click", () => openServiceModal(null));
+  $("#serviceList").addEventListener("click", e => {
+    if (e.target.closest("[data-svc-new]")) {
+      openServiceModal(null);
+      return;
+    }
+    const row = e.target.closest("[data-service]");
+    if (!row) return;
+    const service = svcEditor.services.find(s => s.id === row.dataset.service);
+    if (!service) return;
+    if (e.target.closest("[data-svc-edit]")) openServiceModal(service);
+    if (e.target.closest("[data-svc-toggle]")) toggleServiceActive(service);
+  });
+  $("#serviceModalClose").addEventListener("click", closeAllModals);
+  $("#svCancel").addEventListener("click", closeAllModals);
+  $("#svMinutes").addEventListener("input", refreshServiceDurations);
+  serviceForm.addEventListener("submit", saveService);
 
   function toggleBookingFields(disabled) {
     ["#bkName", "#bkPhone", "#bkService", "#bkVehicle"].forEach(sel => {
@@ -996,6 +1366,38 @@
       .map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("");
     $("#bkVehicle").innerHTML = catalog.vehicles
       .map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join("");
+  }
+
+  function findFormService() {
+    const id = $("#bkService").value;
+    const active = catalog.services.find(s => s.id === id);
+    if (active) return active;
+    if (!editing || !editing.service || editing.service.id !== id) return null;
+
+    // Serviço arquivado (ou fora do catálogo) que ainda tem agendamento:
+    // usa o preço e a duração gravados no próprio agendamento.
+    const minutes = Math.round(
+      (Date.parse(editing.ends_at) - Date.parse(editing.starts_at)) / 60000
+    );
+    return {
+      id: editing.service.id,
+      name: editing.service.name,
+      minutes,
+      prices: {
+        [editing.vehicle_id]: { cents: editing.price_cents, minutes }
+      }
+    };
+  }
+
+  function ensureEditServiceOption(booking) {
+    if (!booking.service) return;
+    const select = $("#bkService");
+    const exists = Array.from(select.options).some(o => o.value === booking.service.id);
+    if (exists) return;
+    const option = document.createElement("option");
+    option.value = booking.service.id;
+    option.textContent = `${booking.service.name} (fora do catálogo)`;
+    select.appendChild(option);
   }
 
   function showBkError(message) {
@@ -1064,6 +1466,7 @@
     }
 
     fillBookingSelects();
+    ensureEditServiceOption(b);
     fillBoxSelect(boxes.some(x => x.id === b.box_id) ? b.box_id : "");
     $("#bkName").value = (b.customer && b.customer.name) || "";
     $("#bkPhone").value = (b.customer && b.customer.phone) || "";
@@ -1119,7 +1522,7 @@
     errEl.hidden = true;
 
     const date = $("#bkDate").value;
-    const svc = catalog.services.find(s => s.id === $("#bkService").value);
+    const svc = findFormService();
     const vehicleId = $("#bkVehicle").value;
     const price = svc && svc.prices[vehicleId];
     const duration = editing
@@ -1213,7 +1616,7 @@
     if (!name) return showBkError("Informe o nome do cliente.");
     if (!date || !hhmm) return showBkError("Escolha o dia e o horário.");
 
-    const svc = catalog.services.find(s => s.id === $("#bkService").value);
+    const svc = findFormService();
     const vehicleId = $("#bkVehicle").value;
     const price = svc && svc.prices[vehicleId];
     const duration = editing

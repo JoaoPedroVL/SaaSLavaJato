@@ -172,8 +172,19 @@
       <div class="toolbar">
         <div>
           <h1 class="page-title">Ajustes</h1>
-          <p class="muted">Boxes e contato do lava-jato.</p>
+          <p class="muted">Serviços, boxes e contato do lava-jato.</p>
         </div>
+      </div>
+
+      <div class="card services-card">
+        <div class="services-head">
+          <div>
+            <h2>Serviços e preços</h2>
+            <p class="muted card-lead">Cadastre o que o lava-jato oferece e o valor por tipo de carro. Serviço sem preço para um veículo não aparece para ele.</p>
+          </div>
+          <button type="button" class="btn-sm" id="newServiceBtn">+ Novo serviço</button>
+        </div>
+        <div id="serviceList" class="service-list"></div>
       </div>
 
       <div class="grid-2">
@@ -299,6 +310,66 @@
       <a class="btn" id="closeSend" target="_blank" rel="noopener">Enviar no WhatsApp</a>
     </div>
   </div>
+</div>
+
+<!-- ================= SERVIÇO (novo / editar) ================= -->
+<div class="modal" id="serviceModal" hidden>
+  <form class="modal-card modal-wide" id="serviceForm" autocomplete="off">
+    <button type="button" class="modal-close" id="serviceModalClose" aria-label="Fechar">×</button>
+    <h2 id="serviceTitle">Novo serviço</h2>
+    <p class="muted card-lead" id="serviceSub">O serviço aparece no site assim que tiver pelo menos um preço.</p>
+
+    <input type="hidden" id="svId">
+
+    <div class="form-grid">
+      <label class="span-2">Nome
+        <input id="svName" maxlength="60" placeholder="Ex.: Lavagem completa" required>
+      </label>
+      <label id="svCategoryField">Categoria
+        <input id="svCategory" list="serviceCategories" maxlength="30" placeholder="Lavagem, Polimento...">
+      </label>
+      <label>Duração base (min)
+        <input id="svMinutes" type="number" min="5" step="5" value="30" required>
+      </label>
+      <label>Ordem
+        <input id="svOrder" type="number" min="0" step="1" value="0">
+      </label>
+      <label>Ativo no site
+        <select id="svActive">
+          <option value="true">Sim</option>
+          <option value="false">Não</option>
+        </select>
+      </label>
+      <label class="span-2">Descrição
+        <input id="svDescription" maxlength="120" placeholder="Opcional">
+      </label>
+    </div>
+
+    <datalist id="serviceCategories">
+      <option value="Lavagem"></option>
+      <option value="Polimento"></option>
+      <option value="Higienização"></option>
+      <option value="Proteção"></option>
+      <option value="Estética"></option>
+    </datalist>
+
+    <div class="price-matrix">
+      <div class="price-head">
+        <span>Veículo</span>
+        <span>Preço (R$)</span>
+        <span>Duração (min)</span>
+      </div>
+      <div id="svPrices"></div>
+    </div>
+    <p class="form-hint">Preencha pelo menos um veículo. Deixe a duração vazia para usar a duração base ajustada pelo porte; preencha para forçar outro tempo.</p>
+
+    <p class="form-error" id="svError" hidden></p>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-sm" id="svCancel">Cancelar</button>
+      <button type="submit" class="btn" id="svSave">Salvar</button>
+    </div>
+  </form>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>

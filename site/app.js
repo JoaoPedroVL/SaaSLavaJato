@@ -147,15 +147,21 @@
 
     if (!t || !t.length) throw new Error("tenant_not_found");
     tenant = t[0];
-    vehicles = v || [];
+
+    const priceRows = s || [];
+    // só mostra o porte de carro que tem pelo menos um serviço/preço ativo
+    vehicles = (v || []).filter(vehicle =>
+      priceRows.some(row => row.vehicle_id === vehicle.id)
+    );
 
     const map = new Map();
-    for (const row of s || []) {
+    for (const row of priceRows) {
       let svc = map.get(row.service_id);
       if (!svc) {
         svc = {
           id: row.service_id, name: row.name, description: row.description,
-          minutes: row.minutes, sort_order: row.sort_order, prices: {}, durations: {}
+          category: row.category || "", minutes: row.minutes,
+          sort_order: row.sort_order, prices: {}, durations: {}
         };
         map.set(row.service_id, svc);
       }
@@ -176,13 +182,13 @@
   }
 
   function priceFor(svc, v = currentVehicle) {
-    return svc.prices[v.id];
+    return v ? svc.prices[v.id] : null;
   }
   function durationFor(svc, v = currentVehicle) {
-    return svc.durations[v.id];
+    return v ? svc.durations[v.id] : null;
   }
   function servicesForVehicle(v = currentVehicle) {
-    return services.filter(s => s.prices[v.id] != null);
+    return v ? services.filter(s => s.prices[v.id] != null) : [];
   }
 
   /* ---------------- página ---------------- */
@@ -236,6 +242,13 @@
   function renderVehicleOptions() {
     const el = $("#vehicleOptions");
     if (!el) return;
+    const picker = document.querySelector(".vehicle-picker");
+    if (!currentVehicle) {
+      el.innerHTML = "";
+      if (picker) picker.style.display = "none";
+      return;
+    }
+    if (picker) picker.style.display = "";
     el.innerHTML = vehicles.map(v => `
       <button class="vp-opt ${v.id === currentVehicle.id ? "active" : ""}"
               data-vehicle="${v.id}" aria-pressed="${v.id === currentVehicle.id}">
@@ -264,13 +277,22 @@
   function renderServices(flash) {
     const el = $("#services");
     if (!el) return;
+    if (!currentVehicle) {
+      el.innerHTML = `<div class="svc-empty">Nenhum serviço disponível no momento. Fale com a gente no WhatsApp para agendar.</div>`;
+      return;
+    }
     const list = servicesForVehicle();
+    if (!list.length) {
+      el.innerHTML = `<div class="svc-empty">Nenhum serviço para este tipo de carro no momento.</div>`;
+      return;
+    }
     el.innerHTML = list.map(s => `
       <article class="svc">
         <div class="svc-top">
           <span class="svc-icon" aria-hidden="true">${iconFor(s.name)}</span>
           <span class="time">${dur(durationFor(s))}</span>
         </div>
+        ${s.category ? `<span class="svc-cat">${esc(s.category)}</span>` : ""}
         <h3>${esc(s.name)}</h3>
         <p>${esc(s.description || "")}</p>
         <div class="svc-price"><small>${esc(currentVehicle.name)} · a partir de</small>${money(priceFor(s))}</div>
@@ -287,6 +309,10 @@
   function renderHeroQuick() {
     const el = $("#quickList");
     if (!el) return;
+    if (!currentVehicle) {
+      el.innerHTML = "";
+      return;
+    }
     el.innerHTML = servicesForVehicle().slice(0, 4).map(s => `
       <button class="quick-item" data-book data-service="${s.id}">
         <span>
@@ -299,6 +325,7 @@
   }
 
   function renderBar() {
+    if (!currentVehicle) return;
     const list = servicesForVehicle();
     if (!list.length) return;
     const cheapest = Math.min(...list.map(s => priceFor(s)));
@@ -423,7 +450,7 @@
     ],
     faq: [
       ["Precisa agendar?", "Não é obrigatório, mas quem agenda tem prioridade e não espera. Sem horário, o atendimento é por ordem de chegada."],
-      ["Como o preço é calculado?", "Cada serviço tem um valor por porte de veículo: hatch, sedan, SUV e picape. É só selecionar o seu carro na tabela de serviços que o preço e o tempo se ajustam."],
+      ["Como o preço é calculado?", "Cada serviço tem um valor por porte de veículo. É só selecionar o seu carro na tabela de serviços que o preço e o tempo se ajustam."],
       ["Quanto tempo demora?", "Depende do serviço e do porte do carro. A duração de cada serviço aparece na tabela acima, já ajustada para o seu veículo."],
       ["Vocês buscam o carro?", "Sim, para serviços a partir de R$ 149 em Linhares. Combine pelo WhatsApp na hora de agendar."],
       ["Quais as formas de pagamento?", "Pix, dinheiro, cartão de crédito e débito. Parcelamos polimento e cristalização em até 3x sem juros."],
@@ -554,7 +581,7 @@
     setInput(false);
 
     if (!vehicles.length) {
-      botSay("Estamos com dificuldade para carregar os horários agora. Chame no WhatsApp que a gente resolve.", [
+      botSay("Não encontrei serviços disponíveis no momento. Chame no WhatsApp que a gente combina seu atendimento.", [
         { label: "Chamar no WhatsApp", run: () => window.open(waLink(), "_blank", "noopener") }
       ]);
       return;

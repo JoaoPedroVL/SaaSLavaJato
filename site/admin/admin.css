@@ -13,6 +13,7 @@
   --navy-line:rgba(255,255,255,.20);
   --sun:#ffc21a;
   --sun-strong:#f0b400;
+  --sun-soft:#fff2cc;
   --sun-ink:#1a1400;
 
   /* superfícies */
@@ -57,6 +58,7 @@
   --navy-3:#1a2d44;
   --navy-muted:#9db0c4;
   --navy-line:rgba(255,255,255,.16);
+  --sun-soft:#3a2f12;
 
   --bg:#0b1320;
   --surface:#111c2b;
@@ -341,6 +343,51 @@ input[type="search"]{min-width:260px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
 .card h2{margin-bottom:14px}
 
+/* ---------- serviços editáveis ---------- */
+.services-card{margin-bottom:14px}
+.services-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.services-head h2{margin-bottom:4px}
+.service-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.service-row{
+  display:grid;grid-template-columns:minmax(0,1.6fr) auto auto;gap:12px;align-items:center;
+  padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);
+}
+.service-row.archived{opacity:.62}
+.service-row .s-main{min-width:0}
+.service-row .s-main b{display:block;font-size:14.5px;color:var(--ink)}
+.service-row .s-main small{display:block;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.s-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}
+.svc-cat-badge,.svc-state{
+  display:inline-block;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;
+}
+.svc-cat-badge{background:var(--sun-soft);color:var(--sun-ink)}
+.svc-state{background:var(--ok-bg);color:var(--ok)}
+.svc-state.off{background:var(--surface-3);color:var(--muted)}
+.s-meta{text-align:right;white-space:nowrap}
+.s-meta b{display:block;font-family:Archivo;font-size:13.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+.s-meta small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.s-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.modal-wide{max-width:720px}
+#serviceModal .modal-actions{
+  position:sticky;bottom:0;z-index:2;background:var(--surface);
+  padding:12px 0 4px;margin-top:18px;border-top:1px solid var(--line);
+}
+.price-matrix{margin-top:16px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.price-head,.price-row{display:grid;grid-template-columns:1.4fr 1fr .8fr;gap:10px;align-items:center;padding:8px 10px}
+.price-head{background:var(--surface-3);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.price-row{border-top:1px solid var(--line);background:var(--surface-2)}
+.price-row .v-name{min-width:0}
+.price-row .v-name b{display:block;font-size:13.5px;color:var(--ink)}
+.price-row .v-name small{display:block;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.price-row label{display:block;min-width:0}
+.price-row label span{display:none;font-size:11px;color:var(--muted);margin-bottom:3px}
+.price-row input{
+  width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:7px;
+  background:var(--surface);color:var(--ink);font-family:Figtree;font-size:13.5px;outline:none;
+}
+.price-row input:focus{border-color:var(--sun-strong);box-shadow:var(--focus)}
+
 .rank{display:flex;flex-direction:column;gap:10px}
 .rank-item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
 .rank-item .bar{grid-column:1/-1;height:7px;border-radius:99px;background:var(--surface-3);overflow:hidden}
@@ -462,6 +509,15 @@ input[type="search"]{min-width:260px}
   .booking .b-actions{justify-content:flex-start}
   .login-card{padding:22px}
   .login-theme{top:12px;right:12px}
+
+  .service-row{grid-template-columns:minmax(0,1fr);gap:8px}
+  .s-meta{text-align:left;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .s-meta small{margin-top:0}
+  .s-actions{justify-content:flex-start}
+  .price-head{display:none}
+  .price-row{grid-template-columns:1fr 1fr;gap:8px}
+  .price-row .v-name{grid-column:1/-1}
+  .price-row label span{display:block}
 }
 /* ---------- desktop: tudo um pouco maior ---------- */
 @media (min-width:900px){

@@ -94,9 +94,25 @@ vai falhar ao carregar (a consulta inclui `box_id`).
 Ela cria o Box 1 para cada lava-jato, joga os agendamentos antigos no Box 1 e
 passa a proteção de sobreposição para `(tenant_id, box_id, horário)`.
 
+### Aplicar a migração de serviços (recomendada)
+
+A migração `supabase/migrations/20261021200000_service_editor.sql` cria a
+categoria opcional do serviço, atualiza a view pública e fecha uma brecha de RLS
+em `service_prices`.
+
+O editor de serviços **funciona sem ela** (a categoria fica escondida e o painel
+cai no modo compatível), mas rode para liberar categoria no site e a proteção
+nova:
+
+1. Abra o arquivo `supabase/migrations/20261021200000_service_editor.sql`
+2. Copie **o conteúdo** (não o caminho do arquivo)
+3. Cole no **SQL Editor** do Supabase e clique em **Run**
+4. Recarregue `/admin/`
+
 ### O que já está protegido
 
 - RLS ligado em todas as tabelas: um lava-jato não enxerga dado do outro
+- Um preço só pode apontar para serviço do mesmo lava-jato
 - `create_booking()` recalcula o preço no servidor (nunca confia no cliente)
 - `EXCLUDE` constraint impede dois agendamentos no mesmo box/horário
 - `create_booking()` escolhe automaticamente um box livre, respeita bloqueios e
@@ -106,9 +122,10 @@ passa a proteção de sobreposição para `(tenant_id, box_id, horário)`.
 ## O que a página já faz
 
 - Lê do banco: nome, WhatsApp, endereço, mapa, horário, serviços, preços e durações
-- Seletor de porte do veículo (hatch, sedan, SUV, picape) — preço e tempo por categoria,
+- Seletor de porte do veículo (hatch, sedan, SUV, picape) — só aparece o porte
+  que tem pelo menos um serviço/preço ativo; preço e tempo por categoria,
   escolha salva no `localStorage`
-- Tabela de serviços que se atualiza conforme o veículo
+- Tabela de serviços que se atualiza conforme o veículo, com categoria opcional
 - Chat: veículo → serviço → dia → horário → nome → WhatsApp → confirmação
 - Horários livres calculados de verdade (`busy_slots` + horário de funcionamento)
 - Grava o agendamento (`create_booking`), mostra o código, gera arquivo `.ics`
@@ -128,8 +145,10 @@ passa a proteção de sobreposição para `(tenant_id, box_id, horário)`.
   (automático ou escolhido) e observação; o preço e a duração saem da tabela
 - **Bloquear horário**: intervalo + motivo (almoço, feriado...), visível na agenda
   e respeitado pela página do cliente
-- **Ajustes**: o dono adiciona, renomeia e remove boxes; edita o WhatsApp do
-  lava-jato (usado no site e no fechamento)
+- **Ajustes**: o dono cadastra, edita, arquiva e reativa serviços; define preço
+  e duração por tipo de carro (hatch, sedan, SUV, picape), categoria opcional e
+  ordem; adiciona, renomeia e remove boxes; edita o WhatsApp do lava-jato
+  (usado no site e no fechamento)
 - **Fechar caixa**: monta o relatório do dia (concluídos, confirmados, pendentes,
   faltas, previsto, serviços) e abre o WhatsApp do dono com o texto pronto
 - Clientes: busca por nome/telefone, visitas concluídas, último atendimento,
@@ -157,8 +176,9 @@ e de `business_hours`.
 2. Trocar o WhatsApp e os preços reais no banco (seed ou admin)
 3. ~~Admin: agenda, clientes, resumo~~ ✅
 4. ~~Admin: encaixe, boxes, bloquear horário, remarcar e fechar caixa~~ ✅
-5. Forma de pagamento no fechamento (dinheiro/Pix/cartão) e caixa por dia
-6. WhatsApp: confirmação e lembretes automáticos
-7. Rotas por lava-jato (`/caprichoso`) em vez de `?loja=`
-8. Tela de gerenciar agendamento (remarcar/cancelar pelo código)
-9. Anti-spam no `create_booking`, aviso de LGPD e relatórios de faltas/retenção
+5. ~~Admin: serviços, preços e duração por tipo de carro~~ ✅
+6. Forma de pagamento no fechamento (dinheiro/Pix/cartão) e caixa por dia
+7. WhatsApp: confirmação e lembretes automáticos
+8. Rotas por lava-jato (`/caprichoso`) em vez de `?loja=`
+9. Tela de gerenciar agendamento (remarcar/cancelar pelo código)
+10. Anti-spam no `create_booking`, aviso de LGPD e relatórios de faltas/retenção
