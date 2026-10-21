@@ -129,7 +129,7 @@ nova:
 - Chat: veículo → serviço → dia → horário → nome → WhatsApp → confirmação
 - Horários livres calculados de verdade (`busy_slots` + horário de funcionamento)
 - Grava o agendamento (`create_booking`), mostra o código, gera arquivo `.ics`
-  para o calendário e link de WhatsApp com o código
+  para o calendário e link de WhatsApp com a confirmação completa (envio manual)
 - Trata `slot_taken` (horário acabou de ser pego), `outside_hours` e `past_slot`
 - Status "aberto agora" no fuso do lava-jato
 - Slider antes/depois, prova social, FAQ, mapa, SEO local, barra fixa no celular

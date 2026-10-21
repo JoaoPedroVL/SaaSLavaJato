@@ -721,7 +721,7 @@
   async function askPhone() {
     state.step = "telefone";
     setInput(true, "(27) 99999-9999", "tel");
-    await botSay("Qual o seu WhatsApp? (para confirmar e lembrar do horário)", null);
+    await botSay("Qual o seu WhatsApp? (para enviar a confirmação do agendamento)", null);
     setTimeout(() => chatInput.focus({ preventScroll: true }), 400);
   }
 
@@ -869,6 +869,16 @@
 
   function showSuccess(res) {
     chatQuick.innerHTML = "";
+    const confirmation = [
+      "Olá! Acabei de agendar pelo site.",
+      `Código: ${res.code}`,
+      `Serviço: ${res.service}`,
+      `Veículo: ${res.vehicle}`,
+      `Data: ${fmtDateTime(res.starts_at)}`,
+      `Valor: ${money(res.price_cents)}`,
+      `Nome: ${state.name}`,
+      `WhatsApp: ${maskPhone(state.phone)}`
+    ].join("\n");
     const card = `
       <div class="success-card">
         <span class="success-label">Agendamento confirmado</span>
@@ -879,6 +889,8 @@
           <span><i>Data</i> ${fmtDateTime(res.starts_at)}</span>
           <span><i>Valor</i> <b>${money(res.price_cents)}</b></span>
         </div>
+        <a class="wa-confirm" href="${waLink(confirmation)}" target="_blank" rel="noopener">Enviar confirmação no WhatsApp</a>
+        <p class="wa-hint">O WhatsApp abre com a mensagem pronta. Toque em enviar.</p>
         <button type="button" class="btn btn-sm" style="margin-top:12px;width:100%" id="addCal">Adicionar ao calendário</button>
         <a class="chat-wa" href="${waLink("Olá! Tenho uma dúvida sobre o agendamento " + res.code + ".")}" target="_blank" rel="noopener">Falar sobre este agendamento</a>
       </div>`;
