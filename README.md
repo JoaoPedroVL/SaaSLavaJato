@@ -152,7 +152,7 @@ nova:
 - **Fechar caixa**: monta o relatório do dia (concluídos, confirmados, pendentes,
   faltas, previsto, serviços) e abre o WhatsApp do dono com o texto pronto
 - Clientes: busca por nome/telefone, visitas concluídas, último atendimento,
-  total gasto e histórico
+  total gasto, histórico e edição/exclusão do contato
 - Resumo por período (hoje/semana/mês): agendamentos, faturamento previsto e
   realizado, ticket médio, ocupação, serviços mais vendidos e próximos horários
 - Agenda se atualiza sozinha a cada minuto e funciona no celular

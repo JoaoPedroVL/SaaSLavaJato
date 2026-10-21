@@ -220,7 +220,44 @@
     <h2 id="clientModalName">—</h2>
     <p class="muted" id="clientModalMeta"></p>
     <div id="clientModalBody" class="mini-list"></div>
+    <div class="modal-actions client-actions">
+      <button type="button" class="btn-sm danger" id="clientDelete">Excluir contato</button>
+      <button type="button" class="btn" id="clientEdit">Editar contato</button>
+    </div>
   </div>
+</div>
+
+<!-- ================= EDITAR CONTATO ================= -->
+<div class="modal" id="customerModal" hidden>
+  <form class="modal-card" id="customerForm" autocomplete="off">
+    <button type="button" class="modal-close" id="customerModalClose" aria-label="Fechar">×</button>
+    <h2>Editar contato</h2>
+    <p class="muted card-lead">O histórico de agendamentos continua o mesmo.</p>
+
+    <input type="hidden" id="cuId">
+
+    <div class="form-grid">
+      <label class="span-2">Nome
+        <input id="cuName" maxlength="80" placeholder="Nome do cliente" required>
+      </label>
+      <label>WhatsApp
+        <input id="cuPhone" inputmode="tel" placeholder="(27) 99999-9999">
+      </label>
+      <label>Placa
+        <input id="cuPlate" maxlength="10" placeholder="Opcional">
+      </label>
+      <label class="span-2">Observações
+        <input id="cuNotes" maxlength="200" placeholder="Opcional">
+      </label>
+    </div>
+
+    <p class="form-error" id="cuError" hidden></p>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-sm" id="cuCancel">Cancelar</button>
+      <button type="submit" class="btn" id="cuSave">Salvar</button>
+    </div>
+  </form>
 </div>
 
 <!-- ================= NOVO AGENDAMENTO / REMARCAR ================= -->

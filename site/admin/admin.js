@@ -69,6 +69,7 @@
   let currentDay = null;
   let currentTab = "agenda";
   let clientsCache = null;
+  let activeClient = null;
   let boxes = [];
   let catalog = null;
   let svcEditor = { loaded: false, services: [], prices: [], vehicles: [] };
@@ -674,7 +675,7 @@
   async function loadClients(force) {
     if (clientsCache && !force) return clientsCache;
     const rows = await api(`customers?tenant_id=eq.${tenant.id}`
-      + `&select=id,name,phone,created_at,bookings(starts_at,status,price_cents,service:services(name))`
+      + `&select=id,name,phone,plate,notes,created_at,bookings(starts_at,status,price_cents,service:services(name))`
       + `&order=name.asc`);
 
     clientsCache = rows.map(c => {
@@ -759,16 +760,23 @@
 
   /* ---------------- modal do cliente ---------------- */
   const modal = $("#clientModal");
+  const customerModal = $("#customerModal");
+  const customerForm = $("#customerForm");
 
   function openClient(id) {
     const c = (clientsCache || []).find(x => x.id === id);
     if (!c) return;
+    activeClient = c;
 
     $("#clientModalName").textContent = c.name;
     const phone = c.phone
       ? `<a href="https://wa.me/${waPhone(c.phone)}" target="_blank" rel="noopener">${esc(fmtPhone(c.phone))}</a>`
       : "sem telefone";
-    $("#clientModalMeta").innerHTML = `${phone} · ${c.visits} ${c.visits === 1 ? "visita" : "visitas"} · ${money(c.spent)}`;
+    const facts = [];
+    if (c.plate) facts.push(`Placa ${esc(c.plate)}`);
+    if (c.notes) facts.push(esc(c.notes));
+    $("#clientModalMeta").innerHTML = `${phone} · ${c.visits} ${c.visits === 1 ? "visita" : "visitas"} · ${money(c.spent)}`
+      + (facts.length ? `<span class="client-facts">${facts.join(" · ")}</span>` : "");
 
     const list = (c.bookings || []).filter(b => b.status !== "cancelled");
     $("#clientModalBody").innerHTML = list.length
@@ -788,10 +796,129 @@
     modal.hidden = false;
   }
 
-  function closeModal() { modal.hidden = true; }
+  function closeModal() {
+    modal.hidden = true;
+    activeClient = null;
+  }
+
+  function showCustomerError(message) {
+    const el = $("#cuError");
+    el.textContent = message;
+    el.hidden = !message;
+  }
+
+  function openCustomerEditor(c) {
+    if (!c) return;
+    modal.hidden = true;
+    $("#cuId").value = c.id;
+    $("#cuName").value = c.name || "";
+    $("#cuPhone").value = c.phone || "";
+    $("#cuPlate").value = c.plate || "";
+    $("#cuNotes").value = c.notes || "";
+    showCustomerError("");
+    customerModal.hidden = false;
+    $("#cuName").focus();
+    $("#cuName").select();
+  }
+
+  function closeCustomerEditor() {
+    customerModal.hidden = true;
+    if (activeClient) modal.hidden = false;
+  }
+
+  async function deleteClient() {
+    const c = activeClient;
+    if (!c) return;
+
+    const bookings = c.bookings || [];
+    const upcoming = bookings.filter(b =>
+      ["pending", "confirmed"].includes(b.status) && Date.parse(b.starts_at) >= Date.now());
+    let message = `Excluir o contato "${c.name}"?`;
+    if (bookings.length) {
+      message += `\n\n${bookings.length} agendamento${bookings.length === 1 ? "" : "s"} `
+        + "continuará" + (bookings.length === 1 ? "" : "ão")
+        + " no histórico, mas sem nome e telefone.";
+    }
+    if (upcoming.length) {
+      message += `\n\nAtenção: há ${upcoming.length} agendamento${upcoming.length === 1 ? "" : "s"} `
+        + "futuro" + (upcoming.length === 1 ? "" : "s") + " que continuará"
+        + (upcoming.length === 1 ? "" : "ão") + " na agenda sem o contato.";
+    }
+    if (!confirm(message)) return;
+
+    const btn = $("#clientDelete");
+    btn.disabled = true;
+    btn.textContent = "Excluindo…";
+    try {
+      await api(`customers?id=eq.${c.id}`, {
+        method: "DELETE",
+        headers: { Prefer: "return=minimal" }
+      });
+      activeClient = null;
+      modal.hidden = true;
+      clientsCache = null;
+      await renderClients(true);
+      toast("Contato excluído.");
+    } catch (err) {
+      toast("Não consegui excluir o contato: " + err.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Excluir contato";
+    }
+  }
+
+  customerForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    const id = $("#cuId").value;
+    const c = (clientsCache || []).find(x => x.id === id);
+    if (!c) return closeAllModals();
+
+    const name = $("#cuName").value.trim();
+    const phone = onlyDigits($("#cuPhone").value);
+    const plate = $("#cuPlate").value.trim().toUpperCase();
+    const notes = $("#cuNotes").value.trim();
+
+    if (!name) return showCustomerError("Informe o nome do cliente.");
+    if (phone && (phone.length < 10 || phone.length > 13)) {
+      return showCustomerError("WhatsApp inválido. Use DDD + número.");
+    }
+
+    const btn = $("#cuSave");
+    btn.disabled = true;
+    btn.textContent = "Salvando…";
+    showCustomerError("");
+    try {
+      await api(`customers?id=eq.${id}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          name,
+          phone: phone || null,
+          plate: plate || null,
+          notes: notes || null
+        })
+      });
+      customerModal.hidden = true;
+      clientsCache = null;
+      await renderClients(true);
+      const fresh = (clientsCache || []).find(x => x.id === id);
+      if (fresh) openClient(fresh.id);
+      toast("Contato atualizado.");
+    } catch (err) {
+      showCustomerError("Não consegui salvar: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Salvar";
+    }
+  });
 
   $("#clientModalClose").addEventListener("click", closeModal);
   modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
+  $("#clientEdit").addEventListener("click", () => openCustomerEditor(activeClient));
+  $("#clientDelete").addEventListener("click", deleteClient);
+  $("#customerModalClose").addEventListener("click", closeCustomerEditor);
+  $("#cuCancel").addEventListener("click", closeCustomerEditor);
+  customerModal.addEventListener("click", e => { if (e.target === customerModal) closeCustomerEditor(); });
 
   /* =========================================================
      BOXES
@@ -1309,15 +1436,17 @@
 
   function closeAllModals() {
     modal.hidden = true;
+    customerModal.hidden = true;
     bookingModal.hidden = true;
     blockModal.hidden = true;
     closeDayModal.hidden = true;
     serviceModal.hidden = true;
+    activeClient = null;
     editing = null;
   }
 
   function anyModalOpen() {
-    return [modal, bookingModal, blockModal, closeDayModal, serviceModal]
+    return [modal, customerModal, bookingModal, blockModal, closeDayModal, serviceModal]
       .some(m => m && !m.hidden);
   }
 
