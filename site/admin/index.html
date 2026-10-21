@@ -6,6 +6,17 @@
 <title>Painel do lava-jato</title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0a1526">
+<script>
+(function(){
+  try{
+    var saved = localStorage.getItem("lavajato_theme");
+    var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", dark ? "#0b1320" : "#0a1526");
+  }catch(e){ document.documentElement.dataset.theme = "light"; }
+})();
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a1526'/%3E%3Cpath d='M32 12c7 10 12 16 12 22a12 12 0 0 1-24 0c0-6 5-12 12-22z' fill='%23ffc21a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,6 +24,16 @@
 <link rel="stylesheet" href="admin.css">
 </head>
 <body>
+
+<svg aria-hidden="true" width="0" height="0" style="position:absolute">
+  <symbol id="sym-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </symbol>
+  <symbol id="sym-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4.2"/>
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>
+  </symbol>
+</svg>
 
 <!-- ================= LOGIN ================= -->
 <div class="login-wrap" id="loginView">
@@ -36,6 +57,11 @@
     <button class="btn btn-block" type="submit" id="loginBtn">Entrar</button>
     <p class="hint">Sem acesso? Fale com quem administra o sistema.</p>
   </form>
+
+  <button type="button" class="theme-toggle login-theme" data-theme-toggle aria-label="Ativar tema escuro" title="Ativar tema escuro">
+    <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><use href="#sym-moon"/></svg>
+    <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><use href="#sym-sun"/></svg>
+  </button>
 </div>
 
 <!-- ================= APP ================= -->
@@ -53,6 +79,10 @@
       <div class="top-actions">
         <select id="tenantSwitch" class="tenant-switch" aria-label="Lava-jato" hidden></select>
         <span class="user-email" id="userEmail"></span>
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Ativar tema escuro" title="Ativar tema escuro">
+          <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><use href="#sym-moon"/></svg>
+          <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><use href="#sym-sun"/></svg>
+        </button>
         <a class="btn-ghost" href="../" target="_blank" rel="noopener">Ver site</a>
         <button class="btn-ghost" id="logoutBtn" type="button">Sair</button>
       </div>

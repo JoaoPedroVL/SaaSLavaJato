@@ -12,6 +12,43 @@
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const WEEK_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+  /* ---------------- tema (claro/escuro) ---------------- */
+  const THEME_KEY = "lavajato_theme";
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+
+  function currentTheme() {
+    return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  }
+
+  function applyTheme(theme, persist) {
+    document.documentElement.dataset.theme = theme;
+    const label = theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro";
+    document.querySelectorAll("[data-theme-toggle]").forEach(btn => {
+      btn.setAttribute("aria-label", label);
+      btn.title = label;
+    });
+    if (themeMeta) themeMeta.setAttribute("content", theme === "dark" ? "#0b1320" : "#0a1526");
+    if (persist) {
+      try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* modo privado */ }
+    }
+  }
+
+  applyTheme(currentTheme());
+
+  document.addEventListener("click", e => {
+    if (!e.target.closest("[data-theme-toggle]")) return;
+    applyTheme(currentTheme() === "dark" ? "light" : "dark", true);
+  });
+
+  const themeMedia = window.matchMedia("(prefers-color-scheme: dark)");
+  if (themeMedia.addEventListener) {
+    themeMedia.addEventListener("change", e => {
+      let saved = null;
+      try { saved = localStorage.getItem(THEME_KEY); } catch (err) { /* ignora */ }
+      if (!saved) applyTheme(e.matches ? "dark" : "light");
+    });
+  }
+
   const STATUS = {
     pending: { label: "Pendente", cls: "pending" },
     confirmed: { label: "Confirmado", cls: "confirmed" },
