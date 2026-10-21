@@ -335,12 +335,16 @@ input[type="search"]{min-width:260px}
   .booking .b-side{min-width:260px}
   .booking .b-actions .btn-sm{padding:9px 14px}
 
-  .client-row{padding:16px 20px;gap:18px}
-  .client-row .c-name{font-size:16px}
-  .client-row .c-phone{font-size:14px}
-  .client-row .c-meta{font-size:14.5px}
-  .client-row .c-spent{font-size:17px}
-  .client-row.head{font-size:12px;padding:0 20px 4px}
+  #clientSearch{font-size:15.5px;padding:12px 15px}
+  #clientCount{font-size:15px}
+
+  .client-row{padding:20px 24px;gap:22px}
+  .client-row .c-name{font-size:19px}
+  .client-row .c-phone{font-size:15.5px;margin-top:2px}
+  .client-row .c-meta{font-size:16px}
+  .client-row .c-meta b{font-size:17px}
+  .client-row .c-spent{font-size:20px}
+  .client-row.head{font-size:12.5px;padding:0 24px 6px}
 
   .kpi{padding:20px}
   .kpi span{font-size:12.5px}
@@ -354,6 +358,17 @@ input[type="search"]{min-width:260px}
   .mini-item .m-main b{font-size:15px}
   .mini-item .m-main small{font-size:13px}
   .mini-item .m-price{font-size:14.5px}
+
+  .modal-card{max-width:640px;padding:30px}
+  .modal-card h2{font-size:26px}
+  #clientModalMeta{font-size:15.5px}
+  .modal-close{width:40px;height:40px;font-size:23px;top:14px;right:14px}
+  .modal-card .mini-item{padding:15px 0}
+  .modal-card .mini-item .m-time{font-size:15px}
+  .modal-card .mini-item .m-main b{font-size:17px}
+  .modal-card .mini-item .m-main small{font-size:13.5px}
+  .modal-card .mini-item .m-price{font-size:17px}
+  .modal-card .pill{font-size:13px;padding:5px 10px}
 
   .empty{padding:56px 24px;font-size:16px}
   .empty b{font-size:18px}
