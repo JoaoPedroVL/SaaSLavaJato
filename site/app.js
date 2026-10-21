@@ -47,8 +47,14 @@
     return p || "";
   }
 
+  function phoneDigits(v) {
+    const d = String(v || "").replace(/\D/g, "");
+    // aceita +55 no começo, mas guarda só DDD + número
+    return d.length > 11 && d.startsWith("55") ? d.slice(2) : d;
+  }
+
   function maskPhone(v) {
-    const d = v.replace(/\D/g, "").slice(0, 11);
+    const d = phoneDigits(v).slice(0, 11);
     if (d.length <= 2) return d;
     if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
     if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
@@ -934,7 +940,7 @@
     }
 
     if (state.step === "telefone") {
-      const digits = val.replace(/\D/g, "");
+      const digits = phoneDigits(val);
       if (digits.length < 10) {
         addMsg(esc(val), "user");
         chatInput.value = "";
@@ -965,11 +971,28 @@
   });
 
   chatInput.addEventListener("input", () => {
-    if (state.step === "telefone") {
-      const pos = chatInput.selectionStart;
-      chatInput.value = maskPhone(chatInput.value);
-      chatInput.setSelectionRange(pos, pos);
+    if (state.step !== "telefone") return;
+    const raw = chatInput.value;
+    const pos = chatInput.selectionStart || 0;
+    const digitsBefore = raw.slice(0, pos).replace(/\D/g, "").length;
+    const formatted = maskPhone(raw);
+    chatInput.value = formatted;
+
+    // Reposiciona o cursor pela quantidade de dígitos, não pela posição antiga:
+    // os parênteses e o hífen entram sozinhos no meio da digitação.
+    let caret = formatted.length;
+    if (digitsBefore === 0) {
+      caret = 0;
+    } else {
+      let seen = 0;
+      for (let i = 0; i < formatted.length; i++) {
+        if (/\d/.test(formatted[i])) {
+          seen++;
+          if (seen === digitsBefore) { caret = i + 1; break; }
+        }
+      }
     }
+    try { chatInput.setSelectionRange(caret, caret); } catch (e) { /* input sem seleção */ }
   });
 
   /* ---------------- inicialização ---------------- */
