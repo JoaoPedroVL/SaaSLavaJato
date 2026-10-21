@@ -57,8 +57,8 @@
     cancelled: { label: "Cancelado", cls: "cancelled" }
   };
 
-  const BOOKING_FIELDS = "id,code,starts_at,ends_at,price_cents,status,notes,vehicle_id,"
-    + "customer:customers(id,name,phone),service:services(id,name),vehicle:vehicles(name)";
+  const BOOKING_FIELDS = "id,code,starts_at,ends_at,price_cents,status,notes,vehicle_id,box_id,"
+    + "customer:customers(id,name,phone),service:services(id,name),vehicle:vehicles(name),box:boxes(id,name)";
 
   /* ---------------- estado ---------------- */
   let session = null;
@@ -69,6 +69,12 @@
   let currentDay = null;
   let currentTab = "agenda";
   let clientsCache = null;
+  let boxes = [];
+  let catalog = null;
+  let editing = null;
+  let bkDay = { date: null, bookings: [], blocks: [] };
+  let bookingSeq = 0;
+  let agendaRows = [];
 
   /* ---------------- utilidades ---------------- */
   const money = cents => {
@@ -88,6 +94,19 @@
   function waPhone(p) {
     const d = String(p || "").replace(/\D/g, "");
     return d.length > 11 ? d : "55" + d;
+  }
+
+  const onlyDigits = p => String(p || "").replace(/\D/g, "");
+  const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && aEnd > bStart;
+
+  function localDay(iso) {
+    const p = partsInTz(new Date(iso), tenant.timezone);
+    return `${p.year}-${p.month}-${p.day}`;
+  }
+
+  function localHHMM(iso) {
+    const p = partsInTz(new Date(iso), tenant.timezone);
+    return `${p.hour}:${p.minute}`;
   }
 
   function partsInTz(date, tz) {
@@ -334,7 +353,7 @@
   async function start() {
     if (!user) user = await getMe();
 
-    memberships = await api("memberships?select=tenant_id,role,tenants(id,slug,name,timezone)");
+    memberships = await api("memberships?select=tenant_id,role,tenants(id,slug,name,timezone,whatsapp)");
     if (!memberships || !memberships.length) {
       clearSession();
       showLogin("Esta conta ainda não está ligada a um lava-jato. Peça o acesso ao administrador.");
@@ -360,11 +379,15 @@
     tenant = { ...m.tenants, id: m.tenant_id };
     tenant.role = m.role;
     clientsCache = null;
+    catalog = null;
+    boxes = [];
+    bkDay = { date: null, bookings: [], blocks: [] };
 
     $("#tenantName").textContent = tenant.name;
     $("#brandMark").textContent = initial(tenant.name);
     $("#loginMark").textContent = initial(tenant.name);
     $("#userEmail").textContent = (user && user.email) || session.email || "";
+    $("#tenantWhats").value = tenant.whatsapp || "";
     document.title = tenant.name + " · Painel";
 
     hours = {};
@@ -372,6 +395,8 @@
       const rows = await api(`business_hours?tenant_id=eq.${tenant.id}&select=weekday,opens_at,closes_at,closed&order=weekday`);
       for (const r of rows) hours[r.weekday] = r;
     } catch (e) { /* agenda ainda funciona sem os horários */ }
+
+    try { await loadBoxes(); } catch (e) { /* migração pendente */ }
 
     currentDay = todayInTz();
     $("#dayInput").value = currentDay;
@@ -392,10 +417,12 @@
     $("#tab-agenda").hidden = tab !== "agenda";
     $("#tab-clientes").hidden = tab !== "clientes";
     $("#tab-resumo").hidden = tab !== "resumo";
+    $("#tab-ajustes").hidden = tab !== "ajustes";
 
     if (tab === "agenda") renderAgenda();
     if (tab === "clientes") renderClients();
     if (tab === "resumo") renderSummary();
+    if (tab === "ajustes") renderBoxes();
   }
 
   document.querySelectorAll(".tabs button").forEach(b => {
@@ -419,6 +446,17 @@
       + `&order=starts_at.asc${extra}`);
   }
 
+  async function fetchBlocks(fromISO, toISO) {
+    try {
+      return await api(`time_blocks?tenant_id=eq.${tenant.id}`
+        + `&starts_at=gte.${encodeURIComponent(fromISO)}`
+        + `&starts_at=lt.${encodeURIComponent(toISO)}`
+        + `&select=id,starts_at,ends_at,reason&order=starts_at.asc`);
+    } catch (e) {
+      return []; // migração de bloqueios ainda não aplicada
+    }
+  }
+
   async function renderAgenda() {
     if (!tenant) return;
 
@@ -426,15 +464,17 @@
     $("#daySummary").textContent = "Carregando…";
     agendaList.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
 
-    let rows = [];
+    let rows = [], blocks = [];
     try {
       const [from, to] = dayRange(currentDay);
-      rows = await fetchBookings(from, to);
+      [rows, blocks] = await Promise.all([fetchBookings(from, to), fetchBlocks(from, to)]);
     } catch (err) {
       agendaList.innerHTML = `<div class="empty"><b>Não consegui carregar a agenda</b>${esc(err.message)}</div>`;
       $("#daySummary").textContent = "";
       return;
     }
+
+    agendaRows = rows;
 
     const showCancelled = $("#showCancelled").checked;
     const visible = rows.filter(b => showCancelled || b.status !== "cancelled");
@@ -444,28 +484,57 @@
       .reduce((sum, b) => sum + b.price_cents, 0);
     const done = active.filter(b => b.status === "done").length;
 
+    const items = [
+      ...visible.map(b => ({ t: b.starts_at, html: bookingRow(b) })),
+      ...blocks.map(b => ({ t: b.starts_at, html: blockRow(b) }))
+    ].sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));
+
     const parts = [
       `${active.length} ${active.length === 1 ? "agendamento" : "agendamentos"}`,
       `${money(revenue)} previstos`
     ];
     if (done) parts.push(`${done} concluído${done > 1 ? "s" : ""}`);
+    if (blocks.length) parts.push(`${blocks.length} bloqueio${blocks.length > 1 ? "s" : ""}`);
     $("#daySummary").textContent = parts.join(" · ");
 
-    if (!visible.length) {
+    if (!items.length) {
       agendaList.innerHTML = `<div class="empty"><b>Nenhum agendamento neste dia</b>
-        ${rows.length && !showCancelled ? "Só há cancelados — marque “Cancelados” para ver." : "Quando alguém agendar pela página, aparece aqui."}
+        ${rows.length && !showCancelled ? "Só há cancelados — marque “Cancelados” para ver." : "Crie um encaixe ou aguarde um agendamento pela página."}
+        <div><button type="button" class="btn" data-new>+ Novo agendamento</button></div>
       </div>`;
       return;
     }
 
-    agendaList.innerHTML = visible.map(bookingRow).join("");
+    agendaList.innerHTML = items.map(i => i.html).join("");
+  }
+
+  function blockRow(b) {
+    return `
+      <div class="booking block">
+        <div class="b-time"><b>${hhmm(b.starts_at)}</b><small>${hhmm(b.ends_at)}</small></div>
+        <div class="b-main">
+          <b>Horário bloqueado</b>
+          <span class="b-detail">${esc(b.reason || "Sem motivo informado")}</span>
+        </div>
+        <div class="b-price"></div>
+        <div class="b-side">
+          <span class="pill blocked">Bloqueado</span>
+          <div class="b-actions">
+            <button type="button" class="btn-sm danger" data-unblock="${b.id}">Remover</button>
+          </div>
+        </div>
+      </div>`;
   }
 
   function bookingRow(b) {
     const st = STATUS[b.status] || STATUS.confirmed;
     const c = b.customer || {};
     const phone = c.phone ? `<a href="https://wa.me/${waPhone(c.phone)}" target="_blank" rel="noopener">${esc(fmtPhone(c.phone))}</a>` : "";
-    const service = [b.service && b.service.name, b.vehicle && b.vehicle.name].filter(Boolean).join(" · ");
+    const service = [
+      b.service && b.service.name,
+      b.vehicle && b.vehicle.name,
+      b.box && b.box.name
+    ].filter(Boolean).join(" · ");
 
     return `
       <div class="booking ${st.cls}">
@@ -487,11 +556,14 @@
     const btn = (status, label, cls) =>
       `<button type="button" class="btn-sm ${cls}" data-id="${b.id}" data-status="${status}">${label}</button>`;
 
+    const edit = `<button type="button" class="btn-sm" data-edit="${b.id}">Remarcar</button>`;
+
     if (b.status === "pending") {
-      return btn("confirmed", "Confirmar", "ok") + btn("cancelled", "Cancelar", "danger");
+      return btn("confirmed", "Confirmar", "ok") + edit + btn("cancelled", "Cancelar", "danger");
     }
     if (b.status === "confirmed") {
       return btn("done", "Concluir", "ok")
+        + edit
         + btn("no_show", "Faltou", "")
         + btn("cancelled", "Cancelar", "danger");
     }
@@ -505,6 +577,32 @@
   }
 
   agendaList.addEventListener("click", async e => {
+    const addBtn = e.target.closest("[data-new]");
+    if (addBtn) { openNewBooking(); return; }
+
+    const unblock = e.target.closest("[data-unblock]");
+    if (unblock) {
+      if (!confirm("Remover este bloqueio? O horário volta a ficar livre.")) return;
+      unblock.disabled = true;
+      try {
+        await api(`time_blocks?id=eq.${unblock.dataset.unblock}`, { method: "DELETE" });
+        toast("Bloqueio removido.");
+        bkDay = { date: null, bookings: [], blocks: [] };
+        renderAgenda();
+      } catch (err) {
+        unblock.disabled = false;
+        toast("Não consegui remover: " + err.message, true);
+      }
+      return;
+    }
+
+    const editBtn = e.target.closest("[data-edit]");
+    if (editBtn) {
+      const b = agendaRows.find(x => x.id === editBtn.dataset.edit);
+      if (b) openEditBooking(b);
+      return;
+    }
+
     const btn = e.target.closest("[data-status]");
     if (!btn) return;
 
@@ -522,6 +620,7 @@
         body: JSON.stringify({ status })
       });
       toast("Agendamento atualizado.");
+      bkDay = { date: null, bookings: [], blocks: [] };
       renderAgenda();
       clientsCache = null;
     } catch (err) {
@@ -544,6 +643,9 @@
   });
   $("#showCancelled").addEventListener("change", renderAgenda);
   $("#refreshBtn").addEventListener("click", renderAgenda);
+  $("#newBookingBtn").addEventListener("click", openNewBooking);
+  $("#blockBtn").addEventListener("click", () => openBlockModal(currentDay));
+  $("#closeDayBtn").addEventListener("click", () => openCloseDay(currentDay));
 
   function setDay(dateStr) {
     currentDay = dateStr;
@@ -675,7 +777,693 @@
 
   $("#clientModalClose").addEventListener("click", closeModal);
   modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
-  addEventListener("keydown", e => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
+
+  /* =========================================================
+     BOXES
+     ========================================================= */
+  async function loadBoxes(force) {
+    if (!force && boxes.length) return boxes;
+    boxes = await api(`boxes?tenant_id=eq.${tenant.id}&active=eq.true`
+      + `&select=id,name,sort_order&order=sort_order,name`);
+    return boxes;
+  }
+
+  function renderBoxes() {
+    const list = $("#boxList");
+    if (!list) return;
+
+    list.innerHTML = boxes.length
+      ? boxes.map(b => `
+        <div class="box-row" data-box="${b.id}">
+          <span class="box-dot" aria-hidden="true"></span>
+          <input class="box-name" data-box-name value="${esc(b.name)}" maxlength="30" aria-label="Nome do box">
+          <button type="button" class="btn-sm" data-box-save>Salvar</button>
+          <button type="button" class="btn-sm danger" data-box-remove>Remover</button>
+        </div>`).join("")
+      : `<div class="empty">Nenhum box ativo. Adicione pelo menos um.</div>`;
+  }
+
+  function fillBoxSelect(selected) {
+    const sel = $("#bkBox");
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Automático</option>'
+      + boxes.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join("");
+    sel.value = selected || "";
+  }
+
+  $("#boxForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = $("#boxName").value.trim();
+    if (!name) return;
+
+    const sort = boxes.reduce((m, b) => Math.max(m, b.sort_order || 0), 0) + 1;
+    const btn = e.target.querySelector("button[type=submit]");
+    btn.disabled = true;
+    try {
+      await api("boxes", {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ tenant_id: tenant.id, name, sort_order: sort })
+      });
+      $("#boxName").value = "";
+      await loadBoxes(true);
+      renderBoxes();
+      fillBoxSelect();
+      toast("Box adicionado.");
+    } catch (err) {
+      toast(/duplicate|unique/i.test(err.message)
+        ? "Já existe um box com esse nome."
+        : "Não consegui adicionar: " + err.message, true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $("#boxList").addEventListener("click", async e => {
+    const row = e.target.closest("[data-box]");
+    if (!row) return;
+    const id = row.dataset.box;
+
+    if (e.target.closest("[data-box-save]")) {
+      const name = row.querySelector("[data-box-name]").value.trim();
+      if (!name) { toast("Dê um nome ao box.", true); return; }
+      try {
+        await api(`boxes?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ name }) });
+        await loadBoxes(true);
+        renderBoxes();
+        fillBoxSelect();
+        toast("Box atualizado.");
+      } catch (err) {
+        toast(/duplicate|unique/i.test(err.message)
+          ? "Já existe um box com esse nome."
+          : "Não consegui salvar: " + err.message, true);
+      }
+      return;
+    }
+
+    if (e.target.closest("[data-box-remove]")) {
+      if (boxes.length <= 1) {
+        toast("O lava-jato precisa de pelo menos um box.", true);
+        return;
+      }
+      try {
+        const nowIso = new Date().toISOString();
+        const future = await api(`bookings?tenant_id=eq.${tenant.id}`
+          + `&box_id=eq.${id}&ends_at=gte.${encodeURIComponent(nowIso)}`
+          + `&status=in.(pending,confirmed)&select=id&limit=1`);
+        if (future.length) {
+          toast("Mova os agendamentos futuros desse box antes de removê-lo.", true);
+          return;
+        }
+      } catch (err) {
+        toast("Não consegui verificar os agendamentos: " + err.message, true);
+        return;
+      }
+      if (!confirm("Remover este box? O histórico continua guardado.")) return;
+
+      try {
+        await api(`boxes?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ active: false }) });
+        await loadBoxes(true);
+        renderBoxes();
+        fillBoxSelect();
+        toast("Box removido.");
+      } catch (err) {
+        toast("Não consegui remover: " + err.message, true);
+      }
+    }
+  });
+
+  $("#whatsForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const digits = onlyDigits($("#tenantWhats").value);
+    if (digits.length < 10 || digits.length > 13) {
+      toast("WhatsApp inválido. Use DDD + número.", true);
+      return;
+    }
+    try {
+      await api(`tenants?id=eq.${tenant.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ whatsapp: digits })
+      });
+      tenant.whatsapp = digits;
+      $("#tenantWhats").value = digits;
+      toast("WhatsApp salvo.");
+    } catch (err) {
+      toast("Não consegui salvar: " + err.message, true);
+    }
+  });
+
+  /* =========================================================
+     CATÁLOGO (serviços, preços e veículos)
+     ========================================================= */
+  async function loadCatalog() {
+    if (catalog) return catalog;
+
+    const [rows, vehicles] = await Promise.all([
+      api(`public_services?tenant_slug=eq.${encodeURIComponent(tenant.slug)}`
+        + `&select=service_id,name,description,minutes,vehicle_id,price_cents,duration_minutes,sort_order`
+        + `&order=sort_order`),
+      api("vehicles?select=id,name,hint,time_factor&order=sort_order")
+    ]);
+
+    const map = new Map();
+    for (const r of rows) {
+      if (!map.has(r.service_id)) {
+        map.set(r.service_id, {
+          id: r.service_id, name: r.name, description: r.description,
+          minutes: r.minutes, prices: {}
+        });
+      }
+      map.get(r.service_id).prices[r.vehicle_id] = {
+        cents: r.price_cents,
+        minutes: r.duration_minutes || r.minutes
+      };
+    }
+
+    catalog = { services: [...map.values()], vehicles };
+    return catalog;
+  }
+
+  const vehicleName = id => {
+    const v = catalog && catalog.vehicles.find(x => x.id === id);
+    return v ? v.name : (id || "Veículo");
+  };
+
+  /* =========================================================
+     AGENDAMENTO (encaixe / remarcar)
+     ========================================================= */
+  const bookingModal = $("#bookingModal");
+  const blockModal = $("#blockModal");
+  const closeDayModal = $("#closeModal");
+  const bookingForm = $("#bookingForm");
+
+  function closeAllModals() {
+    modal.hidden = true;
+    bookingModal.hidden = true;
+    blockModal.hidden = true;
+    closeDayModal.hidden = true;
+    editing = null;
+  }
+
+  function anyModalOpen() {
+    return [modal, bookingModal, blockModal, closeDayModal].some(m => m && !m.hidden);
+  }
+
+  addEventListener("keydown", e => {
+    if (e.key === "Escape" && anyModalOpen()) closeAllModals();
+  });
+
+  addEventListener("keydown", e => {
+    if (currentTab !== "agenda" || anyModalOpen()) return;
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (["input", "select", "textarea"].includes(tag)) return;
+    if (e.key === "ArrowLeft") { e.preventDefault(); setDay(addDays(currentDay, -1)); }
+    if (e.key === "ArrowRight") { e.preventDefault(); setDay(addDays(currentDay, 1)); }
+  });
+
+  [bookingModal, blockModal, closeDayModal].forEach(m => {
+    m.addEventListener("click", e => { if (e.target === m) closeAllModals(); });
+  });
+
+  function toggleBookingFields(disabled) {
+    ["#bkName", "#bkPhone", "#bkService", "#bkVehicle"].forEach(sel => {
+      $(sel).disabled = disabled;
+    });
+  }
+
+  function fillBookingSelects() {
+    $("#bkService").innerHTML = catalog.services
+      .map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("");
+    $("#bkVehicle").innerHTML = catalog.vehicles
+      .map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join("");
+  }
+
+  function showBkError(message) {
+    const el = $("#bkError");
+    el.textContent = message;
+    el.hidden = false;
+  }
+
+  async function openNewBooking() {
+    editing = null;
+    closeAllModals();
+    bookingForm.reset();
+    toggleBookingFields(false);
+    $("#bookingTitle").textContent = "Novo agendamento";
+    $("#bookingSub").textContent = "Encaixe ou agendamento feito no balcão.";
+    $("#bkError").hidden = true;
+    $("#bkSave").textContent = "Salvar";
+    bookingModal.hidden = false;
+
+    try {
+      await Promise.all([loadCatalog(), loadBoxes()]);
+    } catch (err) {
+      bookingModal.hidden = true;
+      toast("Não consegui carregar serviços: " + err.message, true);
+      return;
+    }
+
+    if (!catalog.services.length) {
+      bookingModal.hidden = true;
+      toast("Nenhum serviço ativo. Cadastre serviços no banco.", true);
+      return;
+    }
+    if (!boxes.length) {
+      bookingModal.hidden = true;
+      toast("Cadastre um box em Ajustes antes de agendar.", true);
+      switchTab("ajustes");
+      return;
+    }
+
+    fillBookingSelects();
+    fillBoxSelect();
+    $("#bkDate").value = currentDay || todayInTz();
+    $("#bkNotes").value = "";
+    bkDay = { date: null, bookings: [], blocks: [] };
+    await refreshBookingForm();
+    $("#bkName").focus();
+  }
+
+  async function openEditBooking(b) {
+    closeAllModals();
+    editing = b;
+    bookingForm.reset();
+    toggleBookingFields(false);
+    $("#bookingTitle").textContent = "Remarcar agendamento";
+    $("#bookingSub").textContent = "O serviço e o valor continuam os mesmos.";
+    $("#bkError").hidden = true;
+    $("#bkSave").textContent = "Salvar";
+    bookingModal.hidden = false;
+
+    try {
+      await Promise.all([loadCatalog(), loadBoxes()]);
+    } catch (err) {
+      bookingModal.hidden = true;
+      toast("Não consegui carregar os dados: " + err.message, true);
+      return;
+    }
+
+    fillBookingSelects();
+    fillBoxSelect(boxes.some(x => x.id === b.box_id) ? b.box_id : "");
+    $("#bkName").value = (b.customer && b.customer.name) || "";
+    $("#bkPhone").value = (b.customer && b.customer.phone) || "";
+    $("#bkService").value = b.service ? b.service.id : "";
+    $("#bkVehicle").value = b.vehicle_id || "";
+    $("#bkNotes").value = b.notes || "";
+    $("#bkDate").value = localDay(b.starts_at);
+    toggleBookingFields(true);
+    bkDay = { date: null, bookings: [], blocks: [] };
+    await refreshBookingForm(localHHMM(b.starts_at));
+    $("#bkTime").focus();
+  }
+
+  async function loadBkDay(date) {
+    if (bkDay.date === date) return bkDay;
+    const [from, to] = dayRange(date);
+    const [rows, blocks] = await Promise.all([
+      api(`bookings?tenant_id=eq.${tenant.id}`
+        + `&starts_at=gte.${encodeURIComponent(from)}`
+        + `&starts_at=lt.${encodeURIComponent(to)}`
+        + `&select=id,starts_at,ends_at,status,box_id`),
+      fetchBlocks(from, to)
+    ]);
+    bkDay = { date, bookings: rows, blocks };
+    return bkDay;
+  }
+
+  function findFreeBox(start, end, preferredId, data) {
+    const s = start.getTime();
+    const e = end.getTime();
+
+    const blocked = (data.blocks || []).some(b =>
+      overlaps(s, e, Date.parse(b.starts_at), Date.parse(b.ends_at)));
+    if (blocked) return null;
+
+    const busy = (data.bookings || []).filter(b =>
+      ["pending", "confirmed", "done"].includes(b.status)
+      && (!editing || b.id !== editing.id));
+
+    const free = boxes.filter(box => !busy.some(b =>
+      b.box_id === box.id && overlaps(s, e, Date.parse(b.starts_at), Date.parse(b.ends_at))));
+
+    if (preferredId) return free.find(b => b.id === preferredId) || null;
+    return free[0] || null;
+  }
+
+  async function refreshBookingForm(preferredTime) {
+    if (bookingModal.hidden) return;
+    const seq = ++bookingSeq;
+    const timeSel = $("#bkTime");
+    const hint = $("#bkHint");
+    const errEl = $("#bkError");
+    errEl.hidden = true;
+
+    const date = $("#bkDate").value;
+    const svc = catalog.services.find(s => s.id === $("#bkService").value);
+    const vehicleId = $("#bkVehicle").value;
+    const price = svc && svc.prices[vehicleId];
+    const duration = editing
+      ? Math.round((Date.parse(editing.ends_at) - Date.parse(editing.starts_at)) / 60000)
+      : (price ? price.minutes : 0);
+
+    if (!date) {
+      hint.textContent = "Escolha o dia.";
+      timeSel.innerHTML = "";
+      return;
+    }
+    if (!svc || !duration) {
+      hint.textContent = "Esse serviço não tem preço para o veículo escolhido.";
+      timeSel.innerHTML = '<option value="">—</option>';
+      return;
+    }
+
+    hint.textContent = `${svc.name} · ${vehicleName(vehicleId)} · ${duration} min · `
+      + money(editing ? editing.price_cents : price.cents);
+
+    const h = hours[weekdayOf(date)];
+    if (!h || h.closed) {
+      hint.textContent += " · fechado nesse dia";
+      timeSel.innerHTML = '<option value="">—</option>';
+      return;
+    }
+
+    let data;
+    try {
+      data = await loadBkDay(date);
+    } catch (err) {
+      hint.textContent = "Não consegui verificar os horários.";
+      return;
+    }
+    if (seq !== bookingSeq) return;
+
+    const [oh, om] = h.opens_at.split(":").map(Number);
+    const [ch, cm] = h.closes_at.split(":").map(Number);
+    const openM = oh * 60 + om;
+    const closeM = ch * 60 + cm;
+    const preferredBox = $("#bkBox").value || null;
+    const opts = [];
+
+    for (let m = openM; m + duration <= closeM; m += 15) {
+      const hhmm = String(Math.floor(m / 60)).padStart(2, "0")
+        + ":" + String(m % 60).padStart(2, "0");
+      const start = zonedToUtc(date, hhmm, tenant.timezone);
+      const end = new Date(start.getTime() + duration * 60000);
+      if (findFreeBox(start, end, preferredBox, data)) opts.push(hhmm);
+    }
+
+    const current = preferredTime || timeSel.value;
+    timeSel.innerHTML = opts.length
+      ? opts.map(t => `<option value="${t}">${t}</option>`).join("")
+      : '<option value="">Nenhum horário livre</option>';
+
+    if (opts.length) {
+      timeSel.value = opts.includes(current) ? current : opts[0];
+      if (editing) {
+        const original = localHHMM(editing.starts_at);
+        if (opts.includes(original)) timeSel.value = original;
+      }
+    }
+  }
+
+  async function findOrCreateCustomer(name, phone) {
+    if (phone) {
+      const rows = await api(`customers?tenant_id=eq.${tenant.id}&select=id,name,phone`);
+      const hit = rows.find(c => onlyDigits(c.phone) === phone);
+      if (hit) return hit.id;
+    }
+    const [row] = await api("customers", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ tenant_id: tenant.id, name, phone: phone || null })
+    });
+    return row.id;
+  }
+
+  bookingForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    const errEl = $("#bkError");
+    errEl.hidden = true;
+
+    const name = $("#bkName").value.trim();
+    const phone = onlyDigits($("#bkPhone").value);
+    const date = $("#bkDate").value;
+    const hhmm = $("#bkTime").value;
+    const notes = $("#bkNotes").value.trim();
+
+    if (!name) return showBkError("Informe o nome do cliente.");
+    if (!date || !hhmm) return showBkError("Escolha o dia e o horário.");
+
+    const svc = catalog.services.find(s => s.id === $("#bkService").value);
+    const vehicleId = $("#bkVehicle").value;
+    const price = svc && svc.prices[vehicleId];
+    const duration = editing
+      ? Math.round((Date.parse(editing.ends_at) - Date.parse(editing.starts_at)) / 60000)
+      : (price ? price.minutes : 0);
+
+    if (!svc || (!editing && !price)) return showBkError("Serviço sem preço para esse veículo.");
+
+    const start = zonedToUtc(date, hhmm, tenant.timezone);
+    const end = new Date(start.getTime() + duration * 60000);
+    const preferredBox = $("#bkBox").value || null;
+
+    let day;
+    try {
+      day = await loadBkDay(date);
+    } catch (err) {
+      return showBkError("Não consegui verificar a agenda.");
+    }
+
+    const box = findFreeBox(start, end, preferredBox, day);
+    if (!box) {
+      showBkError("Esse horário acabou de ser ocupado. Escolha outro.");
+      await refreshBookingForm();
+      return;
+    }
+
+    const wasEditing = !!editing;
+    const btn = $("#bkSave");
+    btn.disabled = true;
+    btn.textContent = "Salvando…";
+
+    try {
+      if (wasEditing) {
+        await api(`bookings?id=eq.${editing.id}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({
+            starts_at: start.toISOString(),
+            ends_at: end.toISOString(),
+            box_id: box.id,
+            notes: notes || null
+          })
+        });
+        toast("Agendamento remarcado.");
+      } else {
+        const customerId = await findOrCreateCustomer(name, phone);
+        await api("bookings", {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({
+            tenant_id: tenant.id,
+            customer_id: customerId,
+            service_id: svc.id,
+            vehicle_id: vehicleId,
+            box_id: box.id,
+            starts_at: start.toISOString(),
+            ends_at: end.toISOString(),
+            price_cents: price.cents,
+            status: "confirmed",
+            notes: notes || null
+          })
+        });
+        toast("Agendamento criado.");
+      }
+
+      bookingModal.hidden = true;
+      editing = null;
+      bkDay = { date: null, bookings: [], blocks: [] };
+      clientsCache = null;
+
+      if (currentDay !== date) setDay(date);
+      else renderAgenda();
+    } catch (err) {
+      showBkError(/overlap|exclusion|bookings_no_overlap/i.test(err.message)
+        ? "Esse horário já está ocupado. Escolha outro."
+        : "Não consegui salvar: " + err.message);
+      bkDay = { date: null, bookings: [], blocks: [] };
+      await refreshBookingForm();
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Salvar";
+    }
+  });
+
+  ["#bkDate", "#bkService", "#bkVehicle", "#bkBox"].forEach(sel => {
+    $(sel).addEventListener("change", () => refreshBookingForm());
+  });
+
+  $("#bookingClose").addEventListener("click", closeAllModals);
+  $("#bkCancel").addEventListener("click", closeAllModals);
+
+  /* =========================================================
+     BLOQUEIO DE HORÁRIO
+     ========================================================= */
+  function openBlockModal(date) {
+    closeAllModals();
+    $("#blDate").value = date || currentDay || todayInTz();
+    $("#blFrom").value = "12:00";
+    $("#blTo").value = "13:00";
+    $("#blReason").value = "";
+    $("#blError").hidden = true;
+    blockModal.hidden = false;
+    $("#blFrom").focus();
+  }
+
+  $("#blockClose").addEventListener("click", closeAllModals);
+  $("#blCancel").addEventListener("click", closeAllModals);
+
+  $("#blockForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const errEl = $("#blError");
+    errEl.hidden = true;
+
+    const date = $("#blDate").value;
+    const from = $("#blFrom").value;
+    const to = $("#blTo").value;
+
+    if (!date || !from || !to || to <= from) {
+      errEl.textContent = "Confira o dia e o intervalo.";
+      errEl.hidden = false;
+      return;
+    }
+
+    const start = zonedToUtc(date, from, tenant.timezone);
+    const end = zonedToUtc(date, to, tenant.timezone);
+
+    let day = null;
+    try { day = await loadBkDay(date); } catch (err) { /* segue sem a checagem */ }
+
+    const conflict = day && (day.bookings || []).some(b =>
+      ["pending", "confirmed", "done"].includes(b.status)
+      && overlaps(start.getTime(), end.getTime(), Date.parse(b.starts_at), Date.parse(b.ends_at)));
+
+    if (conflict && !confirm("Já existe agendamento nesse intervalo. Bloquear mesmo assim?")) return;
+
+    const btn = $("#blSave");
+    btn.disabled = true;
+    btn.textContent = "Bloqueando…";
+
+    try {
+      await api("time_blocks", {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          tenant_id: tenant.id,
+          starts_at: start.toISOString(),
+          ends_at: end.toISOString(),
+          reason: $("#blReason").value.trim() || null
+        })
+      });
+      toast("Horário bloqueado.");
+      blockModal.hidden = true;
+      bkDay = { date: null, bookings: [], blocks: [] };
+
+      if (currentDay !== date) setDay(date);
+      else renderAgenda();
+    } catch (err) {
+      errEl.textContent = "Não consegui bloquear: " + err.message;
+      errEl.hidden = false;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Bloquear";
+    }
+  });
+
+  /* =========================================================
+     FECHAMENTO DO DIA
+     ========================================================= */
+  $("#closeModalX").addEventListener("click", closeAllModals);
+
+  $("#closeCopy").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText($("#closeReport").textContent);
+      toast("Relatório copiado.");
+    } catch (e) {
+      toast("Não consegui copiar o relatório.", true);
+    }
+  });
+
+  $("#closeSend").addEventListener("click", e => {
+    if (e.currentTarget.getAttribute("aria-disabled") === "true") e.preventDefault();
+  });
+
+  async function openCloseDay(day) {
+    closeAllModals();
+
+    const [from, to] = dayRange(day);
+    let rows = [], blocks = [];
+    try {
+      [rows, blocks] = await Promise.all([fetchBookings(from, to), fetchBlocks(from, to)]);
+    } catch (err) {
+      toast("Não consegui carregar o dia: " + err.message, true);
+      return;
+    }
+
+    const done = rows.filter(b => b.status === "done");
+    const confirmed = rows.filter(b => b.status === "confirmed");
+    const pending = rows.filter(b => b.status === "pending");
+    const noShow = rows.filter(b => b.status === "no_show");
+    const cancelled = rows.filter(b => b.status === "cancelled");
+    const sum = list => list.reduce((s, b) => s + b.price_cents, 0);
+    const total = sum([...done, ...confirmed, ...pending]);
+
+    const byService = new Map();
+    for (const b of [...done, ...confirmed, ...pending]) {
+      const name = (b.service && b.service.name) || "Serviço";
+      const cur = byService.get(name) || { n: 0, sum: 0 };
+      cur.n += 1;
+      cur.sum += b.price_cents;
+      byService.set(name, cur);
+    }
+
+    const lines = [
+      `*${tenant.name}*`,
+      `Fechamento de ${fmtDateLong(day).toLowerCase()}`,
+      "",
+      `Agendamentos: ${done.length + confirmed.length + pending.length + noShow.length}`,
+      `Concluídos: ${done.length}${done.length ? " · " + money(sum(done)) : ""}`,
+      `Confirmados: ${confirmed.length}${confirmed.length ? " · " + money(sum(confirmed)) : ""}`,
+      `Pendentes: ${pending.length}${pending.length ? " · " + money(sum(pending)) : ""}`,
+      `Faltas: ${noShow.length}`,
+      `Cancelados: ${cancelled.length}`
+    ];
+    if (blocks.length) lines.push(`Bloqueios: ${blocks.length}`);
+    lines.push("", `*Previsto:* ${money(total)}`, `*Concluído:* ${money(sum(done))}`);
+    if (byService.size) {
+      lines.push("", "*Serviços*");
+      for (const [name, v] of byService) {
+        lines.push(`• ${name} — ${v.n}x — ${money(v.sum)}`);
+      }
+    }
+    if (!byService.size) lines.push("", "Sem agendamentos neste dia.");
+
+    const text = lines.join("\n");
+    $("#closeReport").textContent = text;
+    $("#closeSub").textContent = fmtDateLong(day);
+
+    const phone = onlyDigits(tenant.whatsapp);
+    const send = $("#closeSend");
+    if (phone) {
+      send.href = `https://wa.me/${waPhone(phone)}?text=${encodeURIComponent(text)}`;
+      send.removeAttribute("aria-disabled");
+    } else {
+      send.href = "#";
+      send.setAttribute("aria-disabled", "true");
+      $("#closeSub").textContent = fmtDateLong(day) + " · cadastre o WhatsApp em Ajustes";
+    }
+
+    closeDayModal.hidden = false;
+  }
 
   /* ---------------- resumo ---------------- */
   function periodRange(period) {

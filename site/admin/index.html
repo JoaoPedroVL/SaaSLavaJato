@@ -93,6 +93,7 @@
     <button type="button" data-tab="agenda" class="active" aria-current="page">Agenda</button>
     <button type="button" data-tab="clientes">Clientes</button>
     <button type="button" data-tab="resumo">Resumo</button>
+    <button type="button" data-tab="ajustes">Ajustes</button>
   </nav>
 
   <main class="wrap">
@@ -112,13 +113,18 @@
             <input type="checkbox" id="showCancelled">
             <span>Cancelados</span>
           </label>
+          <button type="button" id="blockBtn" class="btn-sm ghost">Bloquear</button>
           <button type="button" id="refreshBtn" class="btn-sm ghost">Atualizar</button>
+          <button type="button" id="newBookingBtn" class="btn">+ Novo agendamento</button>
         </div>
       </div>
 
       <div class="day-head">
         <h1 id="dayTitle">—</h1>
-        <p id="daySummary" class="muted">Carregando…</p>
+        <div class="day-head-right">
+          <p id="daySummary" class="muted">Carregando…</p>
+          <button type="button" id="closeDayBtn" class="btn-sm ghost">Fechar caixa</button>
+        </div>
       </div>
 
       <div id="agendaList" class="agenda" aria-live="polite"></div>
@@ -161,6 +167,38 @@
       </div>
     </section>
 
+    <!-- ---------- AJUSTES ---------- -->
+    <section id="tab-ajustes" class="tab-panel" hidden>
+      <div class="toolbar">
+        <div>
+          <h1 class="page-title">Ajustes</h1>
+          <p class="muted">Boxes e contato do lava-jato.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2>Boxes</h2>
+          <p class="muted card-lead">Cada box atende um carro por vez. A página do cliente escolhe um box livre automaticamente.</p>
+          <div id="boxList" class="box-list"></div>
+          <form id="boxForm" class="inline-form">
+            <input id="boxName" placeholder="Novo box (ex.: Box 2)" maxlength="30" required>
+            <button class="btn-sm" type="submit">Adicionar</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>WhatsApp</h2>
+          <p class="muted card-lead">Número do WhatsApp do lava-jato — usado no site e no fechamento do dia.</p>
+          <form id="whatsForm" class="inline-form">
+            <input id="tenantWhats" inputmode="tel" placeholder="5527999999999">
+            <button class="btn-sm" type="submit">Salvar</button>
+          </form>
+          <p class="form-hint">Com código do país e DDD, só números. Ex.: 5527999999999.</p>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -171,6 +209,95 @@
     <h2 id="clientModalName">—</h2>
     <p class="muted" id="clientModalMeta"></p>
     <div id="clientModalBody" class="mini-list"></div>
+  </div>
+</div>
+
+<!-- ================= NOVO AGENDAMENTO / REMARCAR ================= -->
+<div class="modal" id="bookingModal" hidden>
+  <form class="modal-card" id="bookingForm" autocomplete="off">
+    <button type="button" class="modal-close" id="bookingClose" aria-label="Fechar">×</button>
+    <h2 id="bookingTitle">Novo agendamento</h2>
+    <p class="muted card-lead" id="bookingSub">Encaixe ou agendamento feito no balcão.</p>
+
+    <div class="form-grid">
+      <label class="span-2">Nome
+        <input id="bkName" maxlength="80" placeholder="Nome do cliente" required>
+      </label>
+      <label>WhatsApp
+        <input id="bkPhone" inputmode="tel" placeholder="(27) 99999-9999">
+      </label>
+      <label>Veículo
+        <select id="bkVehicle" required></select>
+      </label>
+      <label>Serviço
+        <select id="bkService" required></select>
+      </label>
+      <label>Box
+        <select id="bkBox"><option value="">Automático</option></select>
+      </label>
+      <label>Dia
+        <input type="date" id="bkDate" required>
+      </label>
+      <label>Hora
+        <select id="bkTime" required></select>
+      </label>
+      <label class="span-2">Observação
+        <input id="bkNotes" maxlength="200" placeholder="Opcional">
+      </label>
+    </div>
+
+    <p class="form-hint" id="bkHint"></p>
+    <p class="form-error" id="bkError" hidden></p>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-sm" id="bkCancel">Cancelar</button>
+      <button type="submit" class="btn" id="bkSave">Salvar</button>
+    </div>
+  </form>
+</div>
+
+<!-- ================= BLOQUEAR HORÁRIO ================= -->
+<div class="modal" id="blockModal" hidden>
+  <form class="modal-card" id="blockForm">
+    <button type="button" class="modal-close" id="blockClose" aria-label="Fechar">×</button>
+    <h2>Bloquear horário</h2>
+    <p class="muted card-lead">Almoço, feriado ou imprevisto. Vale para todos os boxes.</p>
+
+    <div class="form-grid">
+      <label class="span-2">Dia
+        <input type="date" id="blDate" required>
+      </label>
+      <label>De
+        <input type="time" id="blFrom" required>
+      </label>
+      <label>Até
+        <input type="time" id="blTo" required>
+      </label>
+      <label class="span-2">Motivo
+        <input id="blReason" maxlength="60" placeholder="Almoço, feriado...">
+      </label>
+    </div>
+
+    <p class="form-error" id="blError" hidden></p>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-sm" id="blCancel">Cancelar</button>
+      <button type="submit" class="btn" id="blSave">Bloquear</button>
+    </div>
+  </form>
+</div>
+
+<!-- ================= FECHAMENTO DO DIA ================= -->
+<div class="modal" id="closeModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="closeTitle">
+    <button type="button" class="modal-close" id="closeModalX" aria-label="Fechar">×</button>
+    <h2 id="closeTitle">Fechamento do dia</h2>
+    <p class="muted card-lead" id="closeSub"></p>
+    <pre class="report-preview" id="closeReport"></pre>
+    <div class="modal-actions">
+      <button type="button" class="btn-sm" id="closeCopy">Copiar</button>
+      <a class="btn" id="closeSend" target="_blank" rel="noopener">Enviar no WhatsApp</a>
+    </div>
   </div>
 </div>
 

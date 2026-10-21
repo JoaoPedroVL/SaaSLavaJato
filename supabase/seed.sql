@@ -114,3 +114,19 @@ insert into public.business_hours (tenant_id, weekday, opens_at, closes_at, clos
   ('22222222-2222-2222-2222-222222222222', 5, '09:00', '17:00', false)
 on conflict (tenant_id, weekday) do update set
   opens_at = excluded.opens_at, closes_at = excluded.closes_at, closed = excluded.closed;
+
+-- =============================================================
+-- Boxes: todo lava-jato começa com 1 vaga; o dono adiciona mais no painel
+-- (o guard permite rodar o seed antes da migração de boxes, se precisar)
+-- =============================================================
+do $$
+begin
+  if to_regclass('public.boxes') is not null then
+    insert into public.boxes (tenant_id, name, sort_order)
+    select t.id, 'Box 1', 1
+    from public.tenants t
+    where not exists (
+      select 1 from public.boxes b where b.tenant_id = t.id and b.active
+    );
+  end if;
+end $$;

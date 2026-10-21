@@ -293,6 +293,11 @@ input[type="search"]{min-width:260px}
 .pill.noshow{background:var(--warn-bg);color:var(--warn)}
 .pill.cancelled{background:var(--bad-bg);color:var(--bad)}
 
+.booking.block{background:var(--surface-2);border-style:dashed;box-shadow:none}
+.booking.block::before{background:var(--warn)}
+.booking.block .b-main>b{font-weight:600}
+.pill.blocked{background:var(--warn-bg);color:var(--warn)}
+
 .empty{
   background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius);
   padding:44px 20px;text-align:center;color:var(--muted);
@@ -331,7 +336,8 @@ input[type="search"]{min-width:260px}
 .kpi span{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
 .kpi b{display:block;font-family:Archivo;font-size:27px;color:var(--ink);margin-top:6px;line-height:1.1;font-variant-numeric:tabular-nums}
 .kpi small{display:block;font-size:12px;color:var(--muted);margin-top:4px}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid-2>*{min-width:0}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
 .card h2{margin-bottom:14px}
 
@@ -370,6 +376,48 @@ input[type="search"]{min-width:260px}
 }
 .modal-close:hover{background:var(--line)}
 
+/* ---------- formulários (encaixe / bloqueio) ---------- */
+#bookingModal .modal-card{max-width:600px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin-top:16px}
+.form-grid label{display:block;font-size:12.5px;font-weight:600;color:var(--text-2)}
+.form-grid .span-2{grid-column:1/-1}
+.form-grid input,.form-grid select{
+  width:100%;margin-top:5px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
+  background:var(--surface-2);color:var(--ink);font-size:14px;outline:none;
+}
+.form-grid input:focus,.form-grid select:focus{border-color:var(--sun-strong);box-shadow:var(--focus)}
+.form-grid input:disabled,.form-grid select:disabled{opacity:.65;cursor:not-allowed}
+.form-hint{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
+.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
+.empty .btn{margin-top:14px}
+.modal-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:18px;flex-wrap:wrap;padding-top:10px}
+
+/* ---------- fechamento / ajustes ---------- */
+.report-preview{
+  white-space:pre-wrap;word-break:break-word;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:10px;padding:14px;margin:14px 0 0;
+  font-family:Figtree,system-ui,sans-serif;font-size:13px;line-height:1.5;
+  color:var(--text);max-height:46dvh;overflow:auto;
+}
+.card-lead{font-size:13.5px;margin:0 0 4px;line-height:1.45}
+.box-list{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.box-row{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.box-row .box-dot{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:0 0 auto}
+.box-name{
+  flex:1;width:0;min-width:0;border:1px solid transparent;background:transparent;
+  color:var(--ink);font-weight:600;padding:6px 8px;border-radius:7px;outline:none;
+}
+.box-name:focus{border-color:var(--sun-strong);background:var(--surface);box-shadow:var(--focus)}
+.inline-form{display:flex;gap:8px;margin-top:10px}
+.inline-form input{
+  flex:1;width:0;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
+  background:var(--surface-2);color:var(--ink);font-size:14px;outline:none;
+}
+.inline-form input:focus{border-color:var(--sun-strong);box-shadow:var(--focus)}
+
+.day-head-right{display:flex;align-items:center;justify-content:flex-end;gap:14px;flex-wrap:wrap}
+.day-head-right p{margin:0}
+
 /* ---------- toast ---------- */
 .toast{
   position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
@@ -381,10 +429,14 @@ input[type="search"]{min-width:260px}
 
 /* ---------- responsivo ---------- */
 @media (max-width:820px){
-  .grid-2{grid-template-columns:1fr}
+  .grid-2{grid-template-columns:minmax(0,1fr)}
   .client-row{grid-template-columns:1.7fr .9fr auto}
   .client-row .c-meta:nth-child(3),
   .client-row.head span:nth-child(3){display:none}
+}
+@media (max-width:360px){
+  .form-grid{grid-template-columns:1fr}
+  .form-grid .span-2{grid-column:auto}
 }
 @media (max-width:680px){
   .wrap{padding:16px 14px 48px}
@@ -396,9 +448,13 @@ input[type="search"]{min-width:260px}
   .tabs{top:58px;padding:0 8px;overflow-x:auto}
   .tabs button{padding:13px 12px;white-space:nowrap}
   .toolbar{align-items:stretch}
-  .toolbar-right{justify-content:space-between;width:100%}
+  .toolbar-right{justify-content:flex-start;width:100%;row-gap:10px}
   input[type="search"]{min-width:0;width:100%}
   .day-head{align-items:flex-start;flex-direction:column;gap:2px}
+  .day-head-right{justify-content:flex-start;gap:8px}
+  .form-grid{gap:10px 10px}
+  .form-grid input,.form-grid select{padding:9px 10px;font-size:13.5px}
+  .modal-actions .btn,.modal-actions .btn-sm{flex:1}
   .booking{grid-template-columns:52px 1fr;gap:10px 12px;align-items:start}
   .booking .b-time{grid-row:1}
   .booking .b-price{grid-column:2;grid-row:2;text-align:left}
@@ -486,6 +542,10 @@ input[type="search"]{min-width:260px}
   .empty{padding:56px 24px;font-size:16px}
   .empty b{font-size:18px}
   .toast{font-size:14.5px;padding:13px 20px}
+  #bookingModal .modal-card{max-width:700px}
+  .form-grid input,.form-grid select{font-size:15px;padding:11px 13px}
+  .report-preview{font-size:14px}
+  .card-lead{font-size:15px}
 
   .login-card{max-width:440px;padding:34px}
   .login-card h1{font-size:34px}

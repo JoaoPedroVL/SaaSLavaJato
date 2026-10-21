@@ -7,7 +7,7 @@ SaaS de agenda e agendamento por WhatsApp para lava-jatos.
 - `site/index.html` — landing page (HTML + CSS, sem build)
 - `site/app.js` — carrega dados do Supabase, monta a página e conduz o chat
 - `site/config.js` — URL, anon key e slug do lava-jato
-- `site/admin/` — painel (login, agenda, clientes e resumo)
+- `site/admin/` — painel (login, agenda, clientes, resumo, boxes e fechamento)
 - `supabase/` — schema do banco (migrações + seed)
 - `referencias/` — imagens e HTML usados como base
 
@@ -43,7 +43,9 @@ services       serviços de cada lava-jato
 service_prices preço e duração por serviço × veículo
 business_hours horário de funcionamento
 customers      clientes de cada lava-jato
-bookings       agendamentos (com constraint anti-sobreposição)
+boxes          boxes/vagas de cada lava-jato (o dono adiciona e remove)
+bookings       agendamentos (1 box por horário, com constraint anti-sobreposição)
+time_blocks    bloqueios de horário (almoço, feriado, imprevisto)
 ```
 
 ### Comandos
@@ -78,12 +80,27 @@ criado e **não vai para o git**.
 Não existe cadastro público no painel: sem uma linha em `memberships`, o login
 até funciona, mas nenhum dado aparece.
 
+### Aplicar a migração de boxes (obrigatório para o painel novo)
+
+O painel novo usa `boxes` e `time_blocks`. Enquanto a migração
+`supabase/migrations/20261021180000_boxes_and_blocks.sql` não rodar, a agenda
+vai falhar ao carregar (a consulta inclui `box_id`).
+
+1. Abra o arquivo `supabase/migrations/20261021180000_boxes_and_blocks.sql`
+2. Copie **o conteúdo** (não o caminho do arquivo)
+3. Cole no **SQL Editor** do Supabase e clique em **Run**
+4. Recarregue `/admin/`
+
+Ela cria o Box 1 para cada lava-jato, joga os agendamentos antigos no Box 1 e
+passa a proteção de sobreposição para `(tenant_id, box_id, horário)`.
+
 ### O que já está protegido
 
 - RLS ligado em todas as tabelas: um lava-jato não enxerga dado do outro
 - `create_booking()` recalcula o preço no servidor (nunca confia no cliente)
-- `EXCLUDE` constraint impede dois agendamentos no mesmo horário
-- `create_booking()` valida serviço do próprio tenant e horário de funcionamento
+- `EXCLUDE` constraint impede dois agendamentos no mesmo box/horário
+- `create_booking()` escolhe automaticamente um box livre, respeita bloqueios e
+  valida serviço do próprio tenant e horário de funcionamento
 - Leitura pública só pelas views `public_tenants`, `public_services` e `public_hours`
 
 ## O que a página já faz
@@ -105,8 +122,16 @@ até funciona, mas nenhum dado aparece.
 
 - Login por e-mail e senha (Supabase Auth); cada usuário vê só o lava-jato do
   qual é membro, via RLS
-- Agenda do dia: horário, cliente, WhatsApp, veículo, serviço, código e valor
-- Ações por agendamento: confirmar, concluir, marcar falta, cancelar e reabrir
+- Agenda do dia: horário, cliente, WhatsApp, veículo, serviço, box, código e valor
+- Ações por agendamento: confirmar, concluir, marcar falta, cancelar, reabrir e remarcar
+- **Novo agendamento / encaixe**: nome, WhatsApp, serviço, veículo, dia, hora, box
+  (automático ou escolhido) e observação; o preço e a duração saem da tabela
+- **Bloquear horário**: intervalo + motivo (almoço, feriado...), visível na agenda
+  e respeitado pela página do cliente
+- **Ajustes**: o dono adiciona, renomeia e remove boxes; edita o WhatsApp do
+  lava-jato (usado no site e no fechamento)
+- **Fechar caixa**: monta o relatório do dia (concluídos, confirmados, pendentes,
+  faltas, previsto, serviços) e abre o WhatsApp do dono com o texto pronto
 - Clientes: busca por nome/telefone, visitas concluídas, último atendimento,
   total gasto e histórico
 - Resumo por período (hoje/semana/mês): agendamentos, faturamento previsto e
@@ -130,8 +155,10 @@ e de `business_hours`.
 
 1. ~~Receber fotos reais em `site/assets/`~~ ✅ (antes.jpg / depois.jpg)
 2. Trocar o WhatsApp e os preços reais no banco (seed ou admin)
-3. ~~Admin: agenda, clientes, resumo~~ ✅ (falta criar agendamento pelo painel)
-4. WhatsApp: confirmação e lembretes automáticos
-5. Rotas por lava-jato (`/caprichoso`) em vez de `?loja=`
-6. Tela de gerenciar agendamento (remarcar/cancelar pelo código)
-7. Capacidade (boxes), anti-spam no `create_booking` e aviso de LGPD
+3. ~~Admin: agenda, clientes, resumo~~ ✅
+4. ~~Admin: encaixe, boxes, bloquear horário, remarcar e fechar caixa~~ ✅
+5. Forma de pagamento no fechamento (dinheiro/Pix/cartão) e caixa por dia
+6. WhatsApp: confirmação e lembretes automáticos
+7. Rotas por lava-jato (`/caprichoso`) em vez de `?loja=`
+8. Tela de gerenciar agendamento (remarcar/cancelar pelo código)
+9. Anti-spam no `create_booking`, aviso de LGPD e relatórios de faltas/retenção
