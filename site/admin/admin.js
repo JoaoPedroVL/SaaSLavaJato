@@ -74,6 +74,7 @@
   let catalog = null;
   let svcEditor = { loaded: false, services: [], prices: [], vehicles: [] };
   let svcCategorySupported = true;
+  let siteEditor = { loaded: false, supported: true, site: null, logoFile: null, previewUrl: null };
   let editing = null;
   let bkDay = { date: null, bookings: [], blocks: [] };
   let bookingSeq = 0;
@@ -176,6 +177,20 @@
   }
 
   const initial = name => (name || "?").trim().charAt(0).toUpperCase();
+
+  const SITE_DEFAULT = { theme_key: "sun" };
+
+  function renderBrandMark(el, t) {
+    if (!el) return;
+    const url = t && t.logo_url ? String(t.logo_url).trim() : "";
+    if (url) {
+      el.classList.add("has-logo");
+      el.innerHTML = `<img src="${esc(url)}" alt="${esc(t.name || "")}" loading="eager" decoding="async">`;
+    } else {
+      el.classList.remove("has-logo");
+      el.textContent = initial(t && t.name ? t.name : "L");
+    }
+  }
 
   /* ---------------- sessão / auth ---------------- */
   function readSession() {
@@ -348,6 +363,7 @@
     memberships = [];
     tenant = null;
     clientsCache = null;
+    renderBrandMark($("#loginMark"), null);
     showLogin("");
     loginForm.reset();
   }
@@ -356,7 +372,7 @@
   async function start() {
     if (!user) user = await getMe();
 
-    memberships = await api("memberships?select=tenant_id,role,tenants(id,slug,name,timezone,whatsapp)");
+    memberships = await api("memberships?select=tenant_id,role,tenants(id,slug,name,timezone,whatsapp,logo_url)");
     if (!memberships || !memberships.length) {
       clearSession();
       showLogin("Esta conta ainda não está ligada a um lava-jato. Peça o acesso ao administrador.");
@@ -385,14 +401,22 @@
     catalog = null;
     svcEditor = { loaded: false, services: [], prices: [], vehicles: [] };
     svcCategorySupported = true;
+    siteEditor = { loaded: false, supported: true, site: null, logoFile: null, previewUrl: null };
     boxes = [];
     bkDay = { date: null, bookings: [], blocks: [] };
 
     $("#tenantName").textContent = tenant.name;
-    $("#brandMark").textContent = initial(tenant.name);
-    $("#loginMark").textContent = initial(tenant.name);
+    renderBrandMark($("#brandMark"), tenant);
+    renderBrandMark($("#loginMark"), tenant);
+    const siteHref = "../?loja=" + encodeURIComponent(tenant.slug);
+    const viewSiteLink = $("#viewSiteLink");
+    if (viewSiteLink) viewSiteLink.href = siteHref;
+    const siteOpenLink = $("#siteOpenLink");
+    if (siteOpenLink) siteOpenLink.href = siteHref;
     $("#userEmail").textContent = (user && user.email) || session.email || "";
     $("#tenantWhats").value = tenant.whatsapp || "";
+    $("#tenantAddress").value = tenant.address || "";
+    $("#profileStatus").textContent = "Alterações valem para novos agendamentos.";
     document.title = tenant.name + " · Painel";
 
     hours = {};
@@ -400,6 +424,7 @@
       const rows = await api(`business_hours?tenant_id=eq.${tenant.id}&select=weekday,opens_at,closes_at,closed&order=weekday`);
       for (const r of rows) hours[r.weekday] = r;
     } catch (e) { /* agenda ainda funciona sem os horários */ }
+    renderHoursEditor();
 
     try { await loadBoxes(); } catch (e) { /* migração pendente */ }
 
@@ -422,11 +447,13 @@
     $("#tab-agenda").hidden = tab !== "agenda";
     $("#tab-clientes").hidden = tab !== "clientes";
     $("#tab-resumo").hidden = tab !== "resumo";
+    $("#tab-site").hidden = tab !== "site";
     $("#tab-ajustes").hidden = tab !== "ajustes";
 
     if (tab === "agenda") renderAgenda();
     if (tab === "clientes") renderClients();
     if (tab === "resumo") renderSummary();
+    if (tab === "site") loadSiteEditor();
     if (tab === "ajustes") {
       renderBoxes();
       if (!svcEditor.loaded) {
@@ -1052,6 +1079,354 @@
       toast("WhatsApp salvo.");
     } catch (err) {
       toast("Não consegui salvar: " + err.message, true);
+    }
+  });
+
+  /* =========================================================
+     MINHA MARCA (logo e cor)
+     ========================================================= */
+  function siteData() {
+    const cfg = { ...SITE_DEFAULT };
+    for (const [key, value] of Object.entries(siteEditor.site || {})) {
+      if (value !== null && value !== undefined) cfg[key] = value;
+    }
+    return cfg;
+  }
+
+  function renderSiteLogoPreview() {
+    const box = $("#siteLogoPreview");
+    if (!box) return;
+    const url = siteEditor.previewUrl || (tenant && tenant.logo_url) || "";
+    if (url) {
+      box.classList.add("has-logo");
+      box.innerHTML = `<img src="${esc(url)}" alt="Prévia da logo" loading="eager" decoding="async">`;
+    } else {
+      box.classList.remove("has-logo");
+      box.textContent = initial(tenant && tenant.name ? tenant.name : "L");
+    }
+  }
+
+  function renderSiteEditor() {
+    const form = $("#siteForm");
+    const unsupported = $("#siteUnsupported");
+    if (!form || !unsupported) return;
+
+    if (!siteEditor.supported) {
+      unsupported.hidden = false;
+      form.hidden = true;
+      return;
+    }
+
+    unsupported.hidden = true;
+    form.hidden = false;
+
+    const site = siteData();
+    document.querySelectorAll('input[name="siteTheme"]').forEach(radio => {
+      radio.checked = radio.value === site.theme_key;
+    });
+    $("#siteSaveStatus").textContent = "A cor é aplicada ao site quando você salvar.";
+    renderSiteLogoPreview();
+  }
+
+  async function loadSiteEditor(force) {
+    if (siteEditor.loaded && !force) {
+      renderSiteEditor();
+      return;
+    }
+
+    if (!siteEditor.loaded) {
+      $("#siteLogoInput").value = "";
+      $("#siteLogoUpload").disabled = true;
+      $("#siteLogoHint").textContent = "PNG, JPG ou WebP, até 2 MB. Recomendado: 512 × 512 px ou uma logo horizontal com fundo transparente.";
+    }
+    renderSiteLogoPreview();
+
+    try {
+      const rows = await api(`tenant_site?tenant_id=eq.${tenant.id}&select=tenant_id,theme_key&limit=1`);
+      siteEditor.site = rows && rows[0] ? rows[0] : { ...SITE_DEFAULT, tenant_id: tenant.id };
+      siteEditor.supported = true;
+    } catch (err) {
+      // A migração pode ainda não ter sido aplicada no banco.
+      siteEditor.site = { ...SITE_DEFAULT, tenant_id: tenant.id };
+      siteEditor.supported = false;
+    }
+    siteEditor.loaded = true;
+    renderSiteEditor();
+  }
+
+  $("#siteForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!siteEditor.supported) return;
+
+    const theme = document.querySelector('input[name="siteTheme"]:checked');
+    const body = {
+      tenant_id: tenant.id,
+      theme_key: theme ? theme.value : "sun",
+      updated_at: new Date().toISOString()
+    };
+
+    const btn = $("#siteSave");
+    btn.disabled = true;
+    btn.textContent = "Salvando…";
+    $("#siteSaveStatus").textContent = "Salvando…";
+    try {
+      const rows = await api("tenant_site?on_conflict=tenant_id", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+        body: JSON.stringify(body)
+      });
+      siteEditor.site = rows && rows[0] ? rows[0] : body;
+      renderSiteEditor();
+      $("#siteSaveStatus").textContent = "Marca salva. Atualize o site para ver.";
+      toast("Marca atualizada.");
+    } catch (err) {
+      $("#siteSaveStatus").textContent = "Não consegui salvar.";
+      toast("Não consegui salvar a marca: " + err.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Salvar marca";
+    }
+  });
+
+  function validateLogo(file) {
+    if (!file) return "Escolha uma imagem.";
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return "Use PNG, JPG ou WebP.";
+    if (file.size > 2 * 1024 * 1024) return "A imagem precisa ter no máximo 2 MB.";
+    return "";
+  }
+
+  $("#siteLogoInput").addEventListener("change", e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const err = validateLogo(file);
+    if (err) {
+      toast(err, true);
+      e.target.value = "";
+      return;
+    }
+    if (siteEditor.previewUrl) URL.revokeObjectURL(siteEditor.previewUrl);
+    siteEditor.logoFile = file;
+    siteEditor.previewUrl = URL.createObjectURL(file);
+    $("#siteLogoUpload").disabled = false;
+    $("#siteLogoHint").textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB. Clique em “Enviar logo” para publicar.`;
+    renderSiteLogoPreview();
+  });
+
+  async function deleteStorageObject(url) {
+    if (!url || !url.includes("/storage/v1/object/public/tenant-assets/")) return;
+    const path = url.split("/storage/v1/object/public/tenant-assets/")[1];
+    if (!path) return;
+    try {
+      await ensureSession();
+      await fetch(CFG.supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/tenant-assets", {
+        method: "DELETE",
+        headers: {
+          apikey: CFG.supabaseAnonKey,
+          Authorization: "Bearer " + session.access_token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prefixes: [path] })
+      });
+    } catch (e) { /* arquivo antigo pode ficar no storage */ }
+  }
+
+  $("#siteLogoUpload").addEventListener("click", async () => {
+    const file = siteEditor.logoFile;
+    const err = validateLogo(file);
+    if (err) {
+      toast(err, true);
+      return;
+    }
+
+    const btn = $("#siteLogoUpload");
+    btn.disabled = true;
+    btn.textContent = "Enviando…";
+    try {
+      await ensureSession();
+      const ext = file.type === "image/png" ? "png" : file.type === "image/jpeg" ? "jpg" : "webp";
+      const path = `${tenant.id}/logo-${Date.now()}.${ext}`;
+      const base = CFG.supabaseUrl.replace(/\/$/, "");
+      const res = await fetch(`${base}/storage/v1/object/tenant-assets/${path}`, {
+        method: "POST",
+        headers: {
+          apikey: CFG.supabaseAnonKey,
+          Authorization: "Bearer " + session.access_token,
+          "Content-Type": file.type,
+          "cache-control": "31536000"
+        },
+        body: file
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = text;
+        try { msg = JSON.parse(text).message || text; } catch (e) {}
+        throw new Error(msg || "upload_failed");
+      }
+
+      const publicUrl = `${base}/storage/v1/object/public/tenant-assets/${path}`;
+      const old = tenant.logo_url;
+      await api(`tenants?id=eq.${tenant.id}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ logo_url: publicUrl })
+      });
+      tenant.logo_url = publicUrl;
+      if (old && old !== publicUrl) deleteStorageObject(old);
+
+      if (siteEditor.previewUrl) URL.revokeObjectURL(siteEditor.previewUrl);
+      siteEditor.logoFile = null;
+      siteEditor.previewUrl = null;
+      $("#siteLogoInput").value = "";
+      $("#siteLogoHint").textContent = "Logo publicada. Ela já aparece no topo do site.";
+      renderSiteLogoPreview();
+      renderBrandMark($("#brandMark"), tenant);
+      renderBrandMark($("#loginMark"), tenant);
+      toast("Logo atualizada.");
+    } catch (e) {
+      $("#siteLogoHint").textContent = "Não consegui enviar a logo. Tente novamente ou fale com o suporte.";
+      toast("Não consegui enviar a logo: " + e.message, true);
+    } finally {
+      btn.textContent = "Enviar logo";
+      btn.disabled = !siteEditor.logoFile;
+    }
+  });
+
+  $("#siteLogoRemove").addEventListener("click", async () => {
+    if (!tenant.logo_url && !siteEditor.previewUrl) {
+      toast("Este lava-jato ainda não tem logo.", true);
+      return;
+    }
+    if (!confirm("Remover a logo do site?")) return;
+
+    try {
+      const old = tenant.logo_url;
+      if (old) {
+        await api(`tenants?id=eq.${tenant.id}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ logo_url: null })
+        });
+        tenant.logo_url = null;
+        deleteStorageObject(old);
+      }
+      if (siteEditor.previewUrl) URL.revokeObjectURL(siteEditor.previewUrl);
+      siteEditor.logoFile = null;
+      siteEditor.previewUrl = null;
+      $("#siteLogoInput").value = "";
+      $("#siteLogoUpload").disabled = true;
+      $("#siteLogoHint").textContent = "PNG, JPG ou WebP, até 2 MB. Recomendado: 512 × 512 px ou uma logo horizontal com fundo transparente.";
+      renderSiteLogoPreview();
+      renderBrandMark($("#brandMark"), tenant);
+      renderBrandMark($("#loginMark"), tenant);
+      toast("Logo removida.");
+    } catch (e) {
+      toast("Não consegui remover a logo: " + e.message, true);
+    }
+  });
+
+  /* =========================================================
+     DADOS DO NEGÓCIO (endereço e horários)
+     ========================================================= */
+  const HOURS_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+  function hm(value, fallback) {
+    const v = String(value || "").slice(0, 5);
+    return /^\d{2}:\d{2}$/.test(v) ? v : fallback;
+  }
+
+  function renderHoursEditor() {
+    const box = $("#hoursEditor");
+    if (!box) return;
+    box.innerHTML = HOURS_ORDER.map(d => {
+      const h = hours[d];
+      const closed = h ? !!h.closed : true;
+      const opens = hm(h && h.opens_at, "08:00");
+      const closes = hm(h && h.closes_at, "18:00");
+      return `<div class="hours-edit-row${closed ? " closed" : ""}" data-weekday="${d}">
+        <span class="he-day">${WEEK_SHORT[d]}</span>
+        <input type="time" data-opens value="${opens}" aria-label="Abre ${WEEK_SHORT[d]}" ${closed ? "disabled" : ""}>
+        <span class="he-sep">às</span>
+        <input type="time" data-closes value="${closes}" aria-label="Fecha ${WEEK_SHORT[d]}" ${closed ? "disabled" : ""}>
+        <label class="he-closed"><input type="checkbox" data-closed ${closed ? "checked" : ""}> Fechado</label>
+      </div>`;
+    }).join("");
+  }
+
+  $("#hoursEditor").addEventListener("change", e => {
+    if (!e.target.matches("[data-closed]")) return;
+    const row = e.target.closest(".hours-edit-row");
+    if (!row) return;
+    const closed = e.target.checked;
+    row.classList.toggle("closed", closed);
+    row.querySelectorAll('input[type="time"]').forEach(input => { input.disabled = closed; });
+  });
+
+  $("#profileForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const address = $("#tenantAddress").value.trim();
+    if (!address) {
+      toast("Informe o endereço do lava-jato.", true);
+      return;
+    }
+
+    const rows = [];
+    let problem = "";
+    for (const row of document.querySelectorAll(".hours-edit-row")) {
+      const weekday = Number(row.dataset.weekday);
+      const closed = row.querySelector("[data-closed]").checked;
+      const opens = row.querySelector("[data-opens]").value;
+      const closes = row.querySelector("[data-closes]").value;
+      if (!closed && (!opens || !closes || opens >= closes)) {
+        problem = `Confira o horário de ${WEEK_SHORT[weekday]}.`;
+        break;
+      }
+      rows.push({
+        tenant_id: tenant.id,
+        weekday,
+        opens_at: closed ? null : opens,
+        closes_at: closed ? null : closes,
+        closed
+      });
+    }
+    if (problem) {
+      toast(problem, true);
+      return;
+    }
+
+    const btn = $("#profileSave");
+    btn.disabled = true;
+    btn.textContent = "Salvando…";
+    $("#profileStatus").textContent = "Salvando…";
+    try {
+      await Promise.all([
+        api(`tenants?id=eq.${tenant.id}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ address, map_query: address })
+        }),
+        api("business_hours?on_conflict=tenant_id,weekday", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+          body: JSON.stringify(rows)
+        })
+      ]);
+
+      tenant.address = address;
+      tenant.map_query = address;
+      hours = {};
+      for (const r of rows) {
+        hours[r.weekday] = {
+          weekday: r.weekday, opens_at: r.opens_at, closes_at: r.closes_at, closed: r.closed
+        };
+      }
+      $("#profileStatus").textContent = "Dados salvos. Novos agendamentos usam esta agenda.";
+      toast("Endereço e horários salvos.");
+    } catch (err) {
+      $("#profileStatus").textContent = "Não consegui salvar.";
+      toast("Não consegui salvar os dados: " + err.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Salvar dados";
     }
   });
 

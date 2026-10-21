@@ -65,12 +65,14 @@
   --chrome:#b9c6d3;
   --sun:#ffc21a;
   --sun-dark:#e0a800;
+  --sun-hover:#ffcf45;
   --muted:#8b9db0;
   --card:#ffffff;
   --line:#dbe3ea;
   --ok:#2fbf71;
 }
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 html{scroll-behavior:smooth;scroll-padding-top:84px}
 body{
   margin:0;background:var(--ink);color:#fff;
@@ -100,7 +102,7 @@ button{font:inherit;color:inherit}
   transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
   white-space:nowrap;
 }
-.btn:hover{transform:translateY(-2px);background:#ffcf45;box-shadow:0 10px 26px rgba(255,194,26,.22)}
+.btn:hover{transform:translateY(-2px);background:var(--sun-hover);box-shadow:0 10px 26px rgba(255,194,26,.22)}
 .btn:active{transform:translateY(0)}
 .btn-ghost{
   background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.28);
@@ -127,13 +129,20 @@ button{font:inherit;color:inherit}
   display:grid;place-items:center;flex:0 0 auto;
   font-family:Archivo;font-weight:900;font-size:22px;color:#1a1400;
 }
+.logo-mark.has-logo{width:auto;max-width:132px;height:42px;background:transparent;border-radius:0}
+.logo-mark.has-logo img{width:auto;max-width:132px;height:42px;object-fit:contain;display:block}
+
+/* paletas de destaque — o layout continua o mesmo */
+body[data-site-theme="sky"]{--sun:#38bdf8;--sun-dark:#0284c7;--sun-hover:#7dd3fc}
+body[data-site-theme="mint"]{--sun:#34d399;--sun-dark:#059669;--sun-hover:#6ee7b7}
+body[data-site-theme="coral"]{--sun:#fb7185;--sun-dark:#e11d48;--sun-hover:#fda4af}
 .logo b{display:block;font-family:Archivo;font-weight:800;font-size:18px;letter-spacing:.2px}
 .logo small{display:block;font-size:11.5px;color:var(--chrome);letter-spacing:.06em}
 .nav{display:flex;gap:26px;align-items:center}
-.nav a{text-decoration:none;font-size:15px;color:var(--chrome);font-weight:500;transition:color .15s}
+.nav a{text-decoration:none;font-size:15px;color:var(--chrome);font-weight:500;white-space:nowrap;transition:color .15s}
 .nav a:hover{color:#fff}
-.top-cta{display:flex;align-items:center;gap:14px}
-.top-phone{font-size:14px;color:var(--chrome);text-decoration:none}
+.top-cta{display:flex;align-items:center;gap:14px;flex:0 0 auto}
+.top-phone{font-size:14px;color:var(--chrome);text-decoration:none;white-space:nowrap}
 .top-phone:hover{color:#fff}
 
 /* ---------- hero ---------- */
@@ -151,6 +160,13 @@ button{font:inherit;color:inherit}
   transform:skewX(-18deg);animation:sheen 2.4s .5s ease-out forwards;pointer-events:none;
 }
 @keyframes sheen{to{left:132%}}
+.hero-bg{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:#0a1526}
+.hero-bg img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;opacity:.42}
+.hero-bg::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(10,21,38,.42),rgba(10,21,38,.92) 78%);
+}
+.hero-bg[data-fit="contain"] img{object-fit:contain;padding:24px 0 0;opacity:.34}
 .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center;position:relative;z-index:1}
 .status{
   display:inline-flex;align-items:center;gap:8px;
@@ -400,6 +416,8 @@ footer a:hover{color:#fff}
   width:40px;height:40px;border-radius:50%;background:var(--sun);color:#1a1400;
   display:grid;place-items:center;font-family:Archivo;font-weight:900;font-size:19px;flex:0 0 auto;
 }
+.chat-avatar.has-logo{background:#fff;overflow:hidden}
+.chat-avatar.has-logo img{width:100%;height:100%;object-fit:cover}
 .chat-head b{display:block;font-size:15px;line-height:1.2}
 .chat-head small{display:flex;align-items:center;gap:6px;font-size:12px;color:#7fe0ac}
 .chat-head small::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ok)}
@@ -489,6 +507,13 @@ footer a:hover{color:#fff}
 .reveal.in{opacity:1;transform:none}
 
 /* ---------- responsivo ---------- */
+@media (max-width:1100px){
+  .nav{gap:18px}
+  .top-phone{display:none}
+}
+@media (max-width:1000px){
+  .nav{display:none}
+}
 @media (max-width:900px){
   .hero-grid{grid-template-columns:1fr;gap:34px}
   .quick-card{max-width:520px}
@@ -506,8 +531,14 @@ footer a:hover{color:#fff}
   .hero h1{max-width:14ch}
   .hero-sub{font-size:16.5px}
   .stats .wrap{grid-template-columns:repeat(2,1fr);gap:24px}
+  .top .wrap{gap:12px}
+  .logo{gap:8px}
+  .logo-mark.has-logo{max-width:80px;height:34px}
+  .logo-mark.has-logo img{max-width:80px;height:34px}
+  .logo b{font-size:14.5px;line-height:1.12}
+  .logo small{font-size:10px}
   .top-cta .btn{display:none}
-  .top-phone{font-size:13.5px}
+  .top-phone{font-size:13.5px;white-space:nowrap}
   .mobile-bar{display:flex}
   body{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
   .chat-fab{display:none}
@@ -539,19 +570,19 @@ footer a:hover{color:#fff}
 <!-- ================= TOPO ================= -->
 <header class="top" id="top">
   <div class="wrap">
-    <a class="logo" href="#top" aria-label="Caprichoso Estética Automotiva — início">
+    <a class="logo" href="#top" id="brandLink" aria-label="Caprichoso Estética Automotiva — início">
       <span class="logo-mark" id="logoMark" aria-hidden="true">C</span>
       <span>
-        <b>Caprichoso</b>
-        <small>Estética Automotiva</small>
+        <b id="brandName">Caprichoso</b>
+        <small id="brandTagline">Estética Automotiva</small>
       </span>
     </a>
 
     <nav class="nav" aria-label="Navegação principal">
       <a href="#servicos">Serviços</a>
-      <a href="#resultado">Antes e depois</a>
-      <a href="#avaliacoes">Avaliações</a>
-      <a href="#duvidas">Dúvidas</a>
+      <a href="#resultado" data-site-link="resultado">Antes e depois</a>
+      <a href="#avaliacoes" data-site-link="avaliacoes">Avaliações</a>
+      <a href="#duvidas" data-site-link="duvidas">Dúvidas</a>
       <a href="#contato">Contato</a>
     </nav>
 
@@ -566,13 +597,16 @@ footer a:hover{color:#fff}
 
 <!-- ================= HERO ================= -->
 <section class="hero">
+  <div class="hero-bg" id="heroBg" hidden aria-hidden="true">
+    <img id="heroBgImg" alt="" loading="eager" decoding="async">
+  </div>
   <div class="wrap hero-grid">
     <div>
       <div class="status" id="openStatus"><span class="dot"></span><span>Verificando horário…</span></div>
 
-      <h1>Seu carro merece <em>capricho</em>.</h1>
-      <p class="hero-sub">
-        Lavagem e estética automotiva em Linhares. Preço na tabela, horário na hora
+      <h1 id="heroTitle">Seu carro merece <em>capricho</em>.</h1>
+      <p class="hero-sub" id="heroSubtitle">
+        Lavagem e estética automotiva com preço na tabela, horário na hora
         e agendamento em 30 segundos — sem ficar esperando resposta.
       </p>
 
@@ -599,7 +633,7 @@ footer a:hover{color:#fff}
 </section>
 
 <!-- ================= NÚMEROS ================= -->
-<div class="stats">
+<div class="stats" id="statsSection">
   <div class="wrap">
     <div class="stat"><b>+4.800</b><span>carros atendidos</span></div>
     <div class="stat"><b>4,9</b><span>nota no Google</span></div>

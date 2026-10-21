@@ -19,6 +19,20 @@
   let currentVehicle = null;
   let busyCache = new Map();
 
+  const SITE_DEFAULT = {
+    brand_tagline: "Estética Automotiva",
+    hero_title: "Seu carro merece",
+    hero_highlight: "capricho.",
+    hero_subtitle: "Lavagem e estética automotiva com preço na tabela, horário na hora e agendamento em 30 segundos — sem ficar esperando resposta.",
+    hero_image_url: "",
+    hero_image_fit: "cover",
+    theme_key: "sun",
+    show_stats: true,
+    show_gallery: true,
+    show_reviews: true,
+    show_faq: true
+  };
+
   const state = {
     step: "veiculo", vehicle: null, service: null,
     dateStr: null, slot: null, name: "", phone: "", pendingService: null
@@ -154,6 +168,15 @@
     if (!t || !t.length) throw new Error("tenant_not_found");
     tenant = t[0];
 
+    // Conteúdo editável do site. Se a migração ainda não foi aplicada,
+    // a landing continua funcionando com os padrões.
+    try {
+      const rows = await api(`public_site?tenant_slug=eq.${encodeURIComponent(slug)}&select=*&limit=1`);
+      tenant.site = rows && rows[0] ? rows[0] : {};
+    } catch (e) {
+      tenant.site = {};
+    }
+
     const priceRows = s || [];
     // só mostra o porte de carro que tem pelo menos um serviço/preço ativo
     vehicles = (v || []).filter(vehicle =>
@@ -198,7 +221,29 @@
   }
 
   /* ---------------- página ---------------- */
+  function siteCfg() {
+    const cfg = { ...SITE_DEFAULT };
+    for (const [key, value] of Object.entries(tenant.site || {})) {
+      if (value !== null && value !== undefined) cfg[key] = value;
+    }
+    return cfg;
+  }
+
+  function renderLogo(el, alt) {
+    if (!el) return;
+    const url = (tenant.logo_url || "").trim();
+    if (url) {
+      el.classList.add("has-logo");
+      el.innerHTML = `<img src="${esc(url)}" alt="${esc(alt || "")}" loading="eager" decoding="async">`;
+    } else {
+      el.classList.remove("has-logo");
+      el.textContent = (tenant.name || "?").trim().charAt(0).toUpperCase();
+    }
+  }
+
   function applyTenant() {
+    const site = siteCfg();
+
     document.title = `${tenant.name} | Agende online`;
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", `Agende lavagem e estética automotiva em ${tenant.address || tenant.name}. Preço por tipo de carro e horário disponível na hora.`);
@@ -210,10 +255,56 @@
       topPhone.href = "tel:+" + tenant.whatsapp.replace(/\D/g, "");
     }
 
-    const initial = (tenant.name || "?").trim().charAt(0).toUpperCase();
-    for (const id of ["logoMark", "chatAvatar"]) {
-      const el = $("#" + id);
-      if (el) el.textContent = initial;
+    const brandName = $("#brandName");
+    if (brandName) brandName.textContent = tenant.name;
+
+    const brandTagline = $("#brandTagline");
+    if (brandTagline) brandTagline.textContent = site.brand_tagline || SITE_DEFAULT.brand_tagline;
+
+    const brandLink = $("#brandLink");
+    if (brandLink) brandLink.setAttribute("aria-label", `${tenant.name} — início`);
+
+    renderLogo($("#logoMark"), "");
+    renderLogo($("#chatAvatar"), "");
+
+    const heroTitle = $("#heroTitle");
+    if (heroTitle) {
+      heroTitle.innerHTML = esc(site.hero_title || SITE_DEFAULT.hero_title)
+        + (site.hero_highlight ? ` <em>${esc(site.hero_highlight)}</em>` : "");
+    }
+
+    const heroSubtitle = $("#heroSubtitle");
+    if (heroSubtitle) heroSubtitle.textContent = site.hero_subtitle || SITE_DEFAULT.hero_subtitle;
+
+    const heroBg = $("#heroBg");
+    const heroBgImg = $("#heroBgImg");
+    if (heroBg && heroBgImg) {
+      if (site.hero_image_url) {
+        heroBgImg.src = site.hero_image_url;
+        heroBgImg.onerror = () => { heroBg.hidden = true; };
+        heroBg.dataset.fit = site.hero_image_fit === "contain" ? "contain" : "cover";
+        heroBg.hidden = false;
+      } else {
+        heroBg.hidden = true;
+        heroBg.removeAttribute("data-fit");
+        heroBgImg.removeAttribute("src");
+      }
+    }
+
+    const themes = ["sun", "sky", "mint", "coral"];
+    document.body.dataset.siteTheme = themes.includes(site.theme_key) ? site.theme_key : "sun";
+
+    const visibility = {
+      statsSection: site.show_stats,
+      resultado: site.show_gallery,
+      avaliacoes: site.show_reviews,
+      duvidas: site.show_faq
+    };
+    for (const [id, visible] of Object.entries(visibility)) {
+      const show = visible !== false;
+      const section = document.getElementById(id);
+      if (section) section.hidden = !show;
+      document.querySelectorAll(`[data-site-link="${id}"]`).forEach(link => { link.hidden = !show; });
     }
 
     const chatTitle = $("#chatTitle");

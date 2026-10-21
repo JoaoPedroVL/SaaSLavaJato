@@ -116,6 +116,23 @@ on conflict (tenant_id, weekday) do update set
   opens_at = excluded.opens_at, closes_at = excluded.closes_at, closed = excluded.closed;
 
 -- =============================================================
+-- Conteúdo inicial do site (o painel "Minha marca" altera apenas a cor;
+-- textos e fundo ficam reservados para customização premium)
+-- =============================================================
+insert into public.tenant_site
+  (tenant_id, brand_tagline, hero_title, hero_highlight, hero_subtitle, theme_key)
+values
+  ('11111111-1111-1111-1111-111111111111',
+   'Estética Automotiva', 'Seu carro merece', 'capricho.',
+   'Lavagem e estética automotiva em Linhares. Preço na tabela, horário na hora e agendamento em 30 segundos — sem ficar esperando resposta.',
+   'sun'),
+  ('22222222-2222-2222-2222-222222222222',
+   'Lava-jato demonstração', 'Seu carro merece', 'capricho.',
+   'Lavagem e estética automotiva com preço na tabela, horário na hora e agendamento em 30 segundos — sem ficar esperando resposta.',
+   'sky')
+on conflict (tenant_id) do nothing;
+
+-- =============================================================
 -- Boxes: todo lava-jato começa com 1 vaga; o dono adiciona mais no painel
 -- (o guard permite rodar o seed antes da migração de boxes, se precisar)
 -- =============================================================

@@ -36,8 +36,9 @@ Um único projeto Supabase, multi-tenant: cada lava-jato é uma linha em
 `tenants`, e todas as tabelas têm `tenant_id` protegido por RLS.
 
 ```
-tenants        lava-jatos (slug, nome, whatsapp, endereço, fuso)
+tenants        lava-jatos (slug, nome, whatsapp, endereço, fuso, logo)
 memberships    quem acessa o admin de qual lava-jato
+tenant_site    marca do site (cor; campos avançados ficam para customização premium)
 vehicles       hatch, sedan, suv, picape (catálogo global)
 services       serviços de cada lava-jato
 service_prices preço e duração por serviço × veículo
@@ -109,6 +110,24 @@ nova:
 3. Cole no **SQL Editor** do Supabase e clique em **Run**
 4. Recarregue `/admin/`
 
+### Aplicar a migração da marca (recomendada)
+
+A migração `supabase/migrations/20261021210000_tenant_site.sql` cria:
+
+- `tenant_site` (cor de destaque; a base também guarda campos avançados que
+  ficam reservados para customização premium);
+- a view pública `public_site`, que a landing lê;
+- o bucket público `tenant-assets` no Storage e as políticas de upload/remoção
+  por lava-jato.
+
+Sem ela, a landing e o resto do painel continuam funcionando; a aba **Minha
+marca** mostra um aviso e o upload de logo fica indisponível.
+
+1. Abra o arquivo `supabase/migrations/20261021210000_tenant_site.sql`
+2. Copie **o conteúdo** (não o caminho do arquivo)
+3. Cole no **SQL Editor** do Supabase e clique em **Run**
+4. Recarregue `/admin/` e abra **Minha marca**
+
 ### O que já está protegido
 
 - RLS ligado em todas as tabelas: um lava-jato não enxerga dado do outro
@@ -117,7 +136,8 @@ nova:
 - `EXCLUDE` constraint impede dois agendamentos no mesmo box/horário
 - `create_booking()` escolhe automaticamente um box livre, respeita bloqueios e
   valida serviço do próprio tenant e horário de funcionamento
-- Leitura pública só pelas views `public_tenants`, `public_services` e `public_hours`
+- Leitura pública só pelas views `public_tenants`, `public_services`, `public_hours` e `public_site`
+- Upload de logo só pelo membro do lava-jato, em uma pasta com o `tenant_id`
 
 ## O que a página já faz
 
@@ -145,10 +165,13 @@ nova:
   (automático ou escolhido) e observação; o preço e a duração saem da tabela
 - **Bloquear horário**: intervalo + motivo (almoço, feriado...), visível na agenda
   e respeitado pela página do cliente
+- **Minha marca**: envia e remove a logo e escolhe uma paleta de destaque.
+  O layout, os textos, as seções e o fundo do topo são padronizados — a página é
+  do produto, a marca é do lava-jato.
 - **Ajustes**: o dono cadastra, edita, arquiva e reativa serviços; define preço
   e duração por tipo de carro (hatch, sedan, SUV, picape), categoria opcional e
-  ordem; adiciona, renomeia e remove boxes; edita o WhatsApp do lava-jato
-  (usado no site e no fechamento)
+  ordem; adiciona, renomeia e remove boxes; edita o WhatsApp, o endereço e os
+  horários de funcionamento do lava-jato
 - **Fechar caixa**: monta o relatório do dia (concluídos, confirmados, pendentes,
   faltas, previsto, serviços) e abre o WhatsApp do dono com o texto pronto
 - Clientes: busca por nome/telefone, visitas concluídas, último atendimento,
@@ -158,17 +181,22 @@ nova:
 - Agenda se atualiza sozinha a cada minuto e funciona no celular
 - Se o usuário tiver vínculo com mais de um lava-jato, aparece o seletor
 
-## O que ainda é fixo (por lava-jato)
+## O que é padronizado no plano
 
-Está em `site/index.html` / `site/app.js`, porque é identidade visual e conteúdo
-editorial — não muda por preço:
+Para manter o produto simples, repetível e com suporte viável, o plano padrão
+não expõe edição de página:
 
-- Logo, nome no topo, cidade no hero, fotos e textos
-- `CONTENT.reviews` e `CONTENT.faq` em `site/app.js`
-- JSON-LD do `<head>` (para multi-tenant de verdade precisa ser renderizado no servidor)
+- textos do hero, fundo do topo, ordem e visibilidade das seções;
+- avaliações, FAQ e fotos do antes/depois;
+- layout, fontes, componentes e animações;
+- JSON-LD do `<head>` (para multi-tenant de verdade precisa ser renderizado no servidor).
 
-O número de WhatsApp, endereço e horários **não** são fixos: vêm da tabela `tenants`
-e de `business_hours`.
+O dono edita apenas **identidade e operação**: logo, cor de destaque, WhatsApp,
+endereço, horários, serviços e preços. Página sob medida é um projeto separado,
+não autoatendimento.
+
+O número de WhatsApp, endereço, horários, logo e cor **não** são fixos: vêm de
+`tenants`, `business_hours` e `tenant_site`.
 
 ## Próximos passos
 
@@ -177,8 +205,10 @@ e de `business_hours`.
 3. ~~Admin: agenda, clientes, resumo~~ ✅
 4. ~~Admin: encaixe, boxes, bloquear horário, remarcar e fechar caixa~~ ✅
 5. ~~Admin: serviços, preços e duração por tipo de carro~~ ✅
-6. Forma de pagamento no fechamento (dinheiro/Pix/cartão) e caixa por dia
-7. WhatsApp: confirmação e lembretes automáticos
-8. Rotas por lava-jato (`/caprichoso`) em vez de `?loja=`
-9. Tela de gerenciar agendamento (remarcar/cancelar pelo código)
-10. Anti-spam no `create_booking`, aviso de LGPD e relatórios de faltas/retenção
+6. ~~Admin: endereço e horários de funcionamento~~ ✅
+7. Forma de pagamento no fechamento (dinheiro/Pix/cartão) e caixa por dia
+8. Fotos reais (antes/depois), avaliações e FAQ no cadastro do lava-jato
+9. Domínio/subdomínio por lava-jato e SEO renderizado no servidor
+10. WhatsApp: confirmação e lembretes automáticos
+11. Tela de gerenciar agendamento (remarcar/cancelar pelo código)
+12. Anti-spam no `create_booking`, aviso de LGPD e relatórios de faltas/retenção

@@ -83,7 +83,7 @@
           <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><use href="#sym-moon"/></svg>
           <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><use href="#sym-sun"/></svg>
         </button>
-        <a class="btn-ghost" href="../" target="_blank" rel="noopener">Ver site</a>
+        <a class="btn-ghost" id="viewSiteLink" href="../" target="_blank" rel="noopener">Ver site</a>
         <button class="btn-ghost" id="logoutBtn" type="button">Sair</button>
       </div>
     </div>
@@ -93,6 +93,7 @@
     <button type="button" data-tab="agenda" class="active" aria-current="page">Agenda</button>
     <button type="button" data-tab="clientes">Clientes</button>
     <button type="button" data-tab="resumo">Resumo</button>
+    <button type="button" data-tab="site">Minha marca</button>
     <button type="button" data-tab="ajustes">Ajustes</button>
   </nav>
 
@@ -167,12 +168,92 @@
       </div>
     </section>
 
+    <!-- ---------- MINHA MARCA ---------- -->
+    <section id="tab-site" class="tab-panel" hidden>
+      <div class="toolbar">
+        <div>
+          <h1 class="page-title">Minha marca</h1>
+          <p class="muted">Logo e cor do seu site. O layout e os textos são padronizados.</p>
+        </div>
+        <a class="btn-sm" id="siteOpenLink" href="../" target="_blank" rel="noopener">Abrir site</a>
+      </div>
+
+      <div class="empty" id="siteUnsupported" hidden>
+        <b>Personalização de marca indisponível no momento.</b>
+        Fale com o suporte para liberar o upload da logo e a cor do site.
+      </div>
+
+      <form id="siteForm" class="site-editor" autocomplete="off">
+        <div class="grid-2">
+          <div class="card">
+            <h2>Logo</h2>
+            <p class="muted card-lead">A logo aparece no topo do site e no chat. Use uma imagem horizontal ou quadrada, com fundo transparente se possível.</p>
+
+            <div class="logo-row">
+              <div class="logo-preview" id="siteLogoPreview" aria-hidden="true">C</div>
+              <div class="logo-actions">
+                <label class="btn-sm logo-file" for="siteLogoInput">Escolher imagem</label>
+                <input id="siteLogoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+                <button type="button" class="btn-sm" id="siteLogoUpload" disabled>Enviar logo</button>
+                <button type="button" class="btn-sm danger" id="siteLogoRemove">Remover</button>
+              </div>
+            </div>
+            <p class="form-hint" id="siteLogoHint">PNG, JPG ou WebP, até 2 MB. Recomendado: 512 × 512 px ou uma logo horizontal com fundo transparente.</p>
+          </div>
+
+          <div class="card">
+            <h2>Cor de destaque</h2>
+            <p class="muted card-lead">O layout continua padrão. A cor muda botões, detalhes e destaques.</p>
+            <div class="theme-grid" id="siteThemes">
+              <label class="theme-option">
+                <input type="radio" name="siteTheme" value="sun">
+                <span class="theme-swatch sun"></span>
+                <span><b>Amarelo</b><small>Padrão</small></span>
+              </label>
+              <label class="theme-option">
+                <input type="radio" name="siteTheme" value="sky">
+                <span class="theme-swatch sky"></span>
+                <span><b>Azul</b><small>Esportivo</small></span>
+              </label>
+              <label class="theme-option">
+                <input type="radio" name="siteTheme" value="mint">
+                <span class="theme-swatch mint"></span>
+                <span><b>Verde</b><small>Limpeza</small></span>
+              </label>
+              <label class="theme-option">
+                <input type="radio" name="siteTheme" value="coral">
+                <span class="theme-swatch coral"></span>
+                <span><b>Vermelho</b><small>Impacto</small></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card brand-standard">
+          <h2>O que é padronizado</h2>
+          <p class="muted card-lead">O layout, as seções, os textos e o fluxo de agendamento são iguais para todos os lava-jatos. A página é nossa; a marca é sua.</p>
+          <div class="brand-facts">
+            <span>Layout fixo</span>
+            <span>Textos revisados</span>
+            <span>Agendamento testado</span>
+            <span>Atualizações automáticas</span>
+          </div>
+          <p class="form-hint">WhatsApp, endereço e horários ficam em <b>Ajustes</b>. Precisa de uma página sob medida? Fale com o suporte para avaliar um projeto separado.</p>
+        </div>
+
+        <div class="site-savebar">
+          <span class="muted" id="siteSaveStatus">A cor é aplicada ao site quando você salvar.</span>
+          <button class="btn" type="submit" id="siteSave">Salvar marca</button>
+        </div>
+      </form>
+    </section>
+
     <!-- ---------- AJUSTES ---------- -->
     <section id="tab-ajustes" class="tab-panel" hidden>
       <div class="toolbar">
         <div>
           <h1 class="page-title">Ajustes</h1>
-          <p class="muted">Serviços, boxes e contato do lava-jato.</p>
+          <p class="muted">Serviços, boxes, contato, endereço e horários.</p>
         </div>
       </div>
 
@@ -207,6 +288,21 @@
           </form>
           <p class="form-hint">Com código do país e DDD, só números. Ex.: 5527999999999.</p>
         </div>
+      </div>
+
+      <div class="card">
+        <h2>Endereço e horários</h2>
+        <p class="muted card-lead">Aparecem na página de agendamento e definem os horários livres do dia.</p>
+        <form id="profileForm" autocomplete="off">
+          <label class="site-field">Endereço
+            <input id="tenantAddress" maxlength="160" placeholder="Rua, número, bairro, cidade" required>
+          </label>
+          <div class="hours-editor" id="hoursEditor"></div>
+          <div class="profile-actions">
+            <span class="muted" id="profileStatus">Alterações valem para novos agendamentos.</span>
+            <button class="btn" type="submit" id="profileSave">Salvar dados</button>
+          </div>
+        </form>
       </div>
     </section>
 
