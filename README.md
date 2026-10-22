@@ -121,7 +121,8 @@ A migração `supabase/migrations/20261021210000_tenant_site.sql` cria:
   por lava-jato.
 
 Sem ela, a landing e o resto do painel continuam funcionando; a aba **Minha
-marca** mostra um aviso e o upload de logo fica indisponível.
+marca** mostra um aviso e o upload de logo/cor fica indisponível. Nome e
+endereço continuam editáveis.
 
 1. Abra o arquivo `supabase/migrations/20261021210000_tenant_site.sql`
 2. Copie **o conteúdo** (não o caminho do arquivo)
@@ -165,13 +166,14 @@ marca** mostra um aviso e o upload de logo fica indisponível.
   (automático ou escolhido) e observação; o preço e a duração saem da tabela
 - **Bloquear horário**: intervalo + motivo (almoço, feriado...), visível na agenda
   e respeitado pela página do cliente
-- **Minha marca**: envia e remove a logo e escolhe uma paleta de destaque.
-  O layout, os textos, as seções e o fundo do topo são padronizados — a página é
-  do produto, a marca é do lava-jato.
+- **Minha marca**: edita o nome que aparece no topo do site e no painel, o
+  endereço usado no contato/mapa, envia e remove a logo e escolhe uma paleta de
+  destaque. O layout, os textos, as seções e o fundo do topo são padronizados —
+  a página é do produto, a marca é do lava-jato.
 - **Ajustes**: o dono cadastra, edita, arquiva e reativa serviços; define preço
   e duração por tipo de carro (hatch, sedan, SUV, picape), categoria opcional e
-  ordem; adiciona, renomeia e remove boxes; edita o WhatsApp, o endereço e os
-  horários de funcionamento do lava-jato
+  ordem; adiciona, renomeia e remove boxes; edita o WhatsApp e os horários de
+  funcionamento do lava-jato
 - **Fechar caixa**: monta o relatório do dia (concluídos, confirmados, pendentes,
   faltas, previsto, serviços) e abre o WhatsApp do dono com o texto pronto
 - Clientes: busca por nome/telefone, visitas concluídas, último atendimento,
@@ -191,11 +193,11 @@ não expõe edição de página:
 - layout, fontes, componentes e animações;
 - JSON-LD do `<head>` (para multi-tenant de verdade precisa ser renderizado no servidor).
 
-O dono edita apenas **identidade e operação**: logo, cor de destaque, WhatsApp,
-endereço, horários, serviços e preços. Página sob medida é um projeto separado,
-não autoatendimento.
+O dono edita apenas **identidade e operação**: nome do site, logo, cor de
+destaque, endereço, WhatsApp, horários, serviços e preços. Página sob medida é
+um projeto separado, não autoatendimento.
 
-O número de WhatsApp, endereço, horários, logo e cor **não** são fixos: vêm de
+O nome, WhatsApp, endereço, horários, logo e cor **não** são fixos: vêm de
 `tenants`, `business_hours` e `tenant_site`.
 
 ## Próximos passos

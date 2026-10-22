@@ -473,6 +473,7 @@ input[type="search"]{min-width:260px}
 .day-head-right p{margin:0}
 
 /* ---------- minha marca ---------- */
+.identity-card{margin-bottom:14px}
 .site-editor{display:flex;flex-direction:column;gap:14px}
 .site-editor .card{margin:0}
 .site-editor code{background:var(--surface-3);padding:1px 5px;border-radius:5px;font-size:12px}

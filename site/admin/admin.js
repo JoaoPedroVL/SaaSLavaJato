@@ -372,7 +372,7 @@
   async function start() {
     if (!user) user = await getMe();
 
-    memberships = await api("memberships?select=tenant_id,role,tenants(id,slug,name,timezone,whatsapp,logo_url)");
+    memberships = await api("memberships?select=tenant_id,role,tenants(id,slug,name,timezone,whatsapp,address,map_query,logo_url)");
     if (!memberships || !memberships.length) {
       clearSession();
       showLogin("Esta conta ainda não está ligada a um lava-jato. Peça o acesso ao administrador.");
@@ -415,7 +415,9 @@
     if (siteOpenLink) siteOpenLink.href = siteHref;
     $("#userEmail").textContent = (user && user.email) || session.email || "";
     $("#tenantWhats").value = tenant.whatsapp || "";
-    $("#tenantAddress").value = tenant.address || "";
+    $("#siteName").value = tenant.name || "";
+    $("#siteAddress").value = tenant.address || "";
+    $("#identityStatus").textContent = "Alterações valem para o site e o painel.";
     $("#profileStatus").textContent = "Alterações valem para novos agendamentos.";
     document.title = tenant.name + " · Painel";
 
@@ -1154,6 +1156,61 @@
     renderSiteEditor();
   }
 
+  $("#identityForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = $("#siteName").value.trim();
+    const address = $("#siteAddress").value.trim();
+    if (!name) {
+      toast("Informe o nome do site.", true);
+      $("#siteName").focus();
+      return;
+    }
+    if (!address) {
+      toast("Informe o endereço do lava-jato.", true);
+      $("#siteAddress").focus();
+      return;
+    }
+
+    const btn = $("#identitySave");
+    btn.disabled = true;
+    btn.textContent = "Salvando…";
+    $("#identityStatus").textContent = "Salvando…";
+    try {
+      const rows = await api(`tenants?id=eq.${tenant.id}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ name, address, map_query: address })
+      });
+      const saved = rows && rows[0] ? rows[0] : { name, address, map_query: address };
+      tenant.name = saved.name || name;
+      tenant.address = saved.address || address;
+      tenant.map_query = saved.map_query || address;
+
+      memberships.forEach(m => {
+        if (m.tenant_id === tenant.id && m.tenants) m.tenants.name = tenant.name;
+      });
+      $("#siteName").value = tenant.name;
+      $("#siteAddress").value = tenant.address;
+      $("#tenantName").textContent = tenant.name;
+      renderBrandMark($("#brandMark"), tenant);
+      renderBrandMark($("#loginMark"), tenant);
+      document.title = tenant.name + " · Painel";
+      if (memberships.length > 1) {
+        const index = memberships.findIndex(m => m.tenant_id === tenant.id);
+        const option = $("#tenantSwitch").querySelector(`option[value="${index}"]`);
+        if (option) option.textContent = tenant.name;
+      }
+      $("#identityStatus").textContent = "Dados salvos. O site usa essas informações.";
+      toast("Nome e endereço salvos.");
+    } catch (err) {
+      $("#identityStatus").textContent = "Não consegui salvar.";
+      toast("Não consegui salvar os dados: " + err.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Salvar dados";
+    }
+  });
+
   $("#siteForm").addEventListener("submit", async e => {
     e.preventDefault();
     if (!siteEditor.supported) return;
@@ -1177,14 +1234,14 @@
       });
       siteEditor.site = rows && rows[0] ? rows[0] : body;
       renderSiteEditor();
-      $("#siteSaveStatus").textContent = "Marca salva. Atualize o site para ver.";
-      toast("Marca atualizada.");
+      $("#siteSaveStatus").textContent = "Cor salva. Atualize o site para ver.";
+      toast("Cor atualizada.");
     } catch (err) {
       $("#siteSaveStatus").textContent = "Não consegui salvar.";
       toast("Não consegui salvar a marca: " + err.message, true);
     } finally {
       btn.disabled = false;
-      btn.textContent = "Salvar marca";
+      btn.textContent = "Salvar cor";
     }
   });
 
@@ -1325,7 +1382,7 @@
   });
 
   /* =========================================================
-     DADOS DO NEGÓCIO (endereço e horários)
+     HORÁRIOS DE FUNCIONAMENTO
      ========================================================= */
   const HOURS_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
@@ -1363,12 +1420,6 @@
 
   $("#profileForm").addEventListener("submit", async e => {
     e.preventDefault();
-    const address = $("#tenantAddress").value.trim();
-    if (!address) {
-      toast("Informe o endereço do lava-jato.", true);
-      return;
-    }
-
     const rows = [];
     let problem = "";
     for (const row of document.querySelectorAll(".hours-edit-row")) {
@@ -1398,35 +1449,26 @@
     btn.textContent = "Salvando…";
     $("#profileStatus").textContent = "Salvando…";
     try {
-      await Promise.all([
-        api(`tenants?id=eq.${tenant.id}`, {
-          method: "PATCH",
-          headers: { Prefer: "return=representation" },
-          body: JSON.stringify({ address, map_query: address })
-        }),
-        api("business_hours?on_conflict=tenant_id,weekday", {
-          method: "POST",
-          headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-          body: JSON.stringify(rows)
-        })
-      ]);
+      await api("business_hours?on_conflict=tenant_id,weekday", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+        body: JSON.stringify(rows)
+      });
 
-      tenant.address = address;
-      tenant.map_query = address;
       hours = {};
       for (const r of rows) {
         hours[r.weekday] = {
           weekday: r.weekday, opens_at: r.opens_at, closes_at: r.closes_at, closed: r.closed
         };
       }
-      $("#profileStatus").textContent = "Dados salvos. Novos agendamentos usam esta agenda.";
-      toast("Endereço e horários salvos.");
+      $("#profileStatus").textContent = "Horários salvos. Novos agendamentos usam esta agenda.";
+      toast("Horários salvos.");
     } catch (err) {
       $("#profileStatus").textContent = "Não consegui salvar.";
-      toast("Não consegui salvar os dados: " + err.message, true);
+      toast("Não consegui salvar os horários: " + err.message, true);
     } finally {
       btn.disabled = false;
-      btn.textContent = "Salvar dados";
+      btn.textContent = "Salvar horários";
     }
   });
 

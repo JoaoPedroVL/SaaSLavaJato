@@ -173,9 +173,28 @@
       <div class="toolbar">
         <div>
           <h1 class="page-title">Minha marca</h1>
-          <p class="muted">Logo e cor do seu site. O layout e os textos são padronizados.</p>
+          <p class="muted">Nome, endereço, logo e cor do seu site. O layout e os textos são padronizados.</p>
         </div>
         <a class="btn-sm" id="siteOpenLink" href="../" target="_blank" rel="noopener">Abrir site</a>
+      </div>
+
+      <div class="card identity-card">
+        <h2>Nome e endereço</h2>
+        <p class="muted card-lead">O nome aparece no topo do site e no painel. O endereço aparece no contato e no mapa.</p>
+        <form id="identityForm" autocomplete="off">
+          <div class="form-grid">
+            <label class="span-2">Nome do site
+              <input id="siteName" maxlength="60" placeholder="Ex.: Caprichoso Estética Automotiva" required>
+            </label>
+            <label class="span-2">Endereço
+              <input id="siteAddress" maxlength="160" placeholder="Rua, número, bairro, cidade/UF" required>
+            </label>
+          </div>
+          <div class="profile-actions">
+            <span class="muted" id="identityStatus">Alterações valem para o site e o painel.</span>
+            <button class="btn" type="submit" id="identitySave">Salvar dados</button>
+          </div>
+        </form>
       </div>
 
       <div class="empty" id="siteUnsupported" hidden>
@@ -238,12 +257,12 @@
             <span>Agendamento testado</span>
             <span>Atualizações automáticas</span>
           </div>
-          <p class="form-hint">WhatsApp, endereço e horários ficam em <b>Ajustes</b>. Precisa de uma página sob medida? Fale com o suporte para avaliar um projeto separado.</p>
+          <p class="form-hint">WhatsApp e horários ficam em <b>Ajustes</b>. Precisa de uma página sob medida? Fale com o suporte para avaliar um projeto separado.</p>
         </div>
 
         <div class="site-savebar">
           <span class="muted" id="siteSaveStatus">A cor é aplicada ao site quando você salvar.</span>
-          <button class="btn" type="submit" id="siteSave">Salvar marca</button>
+          <button class="btn" type="submit" id="siteSave">Salvar cor</button>
         </div>
       </form>
     </section>
@@ -253,7 +272,7 @@
       <div class="toolbar">
         <div>
           <h1 class="page-title">Ajustes</h1>
-          <p class="muted">Serviços, boxes, contato, endereço e horários.</p>
+          <p class="muted">Serviços, boxes, contato e horários.</p>
         </div>
       </div>
 
@@ -291,16 +310,13 @@
       </div>
 
       <div class="card">
-        <h2>Endereço e horários</h2>
-        <p class="muted card-lead">Aparecem na página de agendamento e definem os horários livres do dia.</p>
+        <h2>Horários de funcionamento</h2>
+        <p class="muted card-lead">Definem os horários livres do dia e aparecem na página de agendamento.</p>
         <form id="profileForm" autocomplete="off">
-          <label class="site-field">Endereço
-            <input id="tenantAddress" maxlength="160" placeholder="Rua, número, bairro, cidade" required>
-          </label>
           <div class="hours-editor" id="hoursEditor"></div>
           <div class="profile-actions">
             <span class="muted" id="profileStatus">Alterações valem para novos agendamentos.</span>
-            <button class="btn" type="submit" id="profileSave">Salvar dados</button>
+            <button class="btn" type="submit" id="profileSave">Salvar horários</button>
           </div>
         </form>
       </div>
