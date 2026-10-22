@@ -30,6 +30,25 @@ Painel: <http://localhost:8080/admin/>.
 
 > Use o servidor (não `file://`): o chat e o painel fazem `fetch` na API do Supabase.
 
+## Publicar no Netlify
+
+O `netlify.toml` já configura o deploy estático:
+
+- **Publish directory:** `site`
+- **Build command:** vazio (não há build)
+- **Admin:** `https://SEU-SITE.netlify.app/admin/`
+- **Landing:** `https://SEU-SITE.netlify.app/?loja=caprichoso`
+
+Opções:
+
+1. **Netlify conectado ao GitHub:** importe o repositório
+   `JoaoPedroVL/SaaSLavaJato`; o `netlify.toml` cuida do resto.
+2. **CLI:** `npx netlify-cli deploy --prod --dir=site`
+3. **Netlify Drop:** arraste a pasta `site` para <https://app.netlify.com/drop>.
+
+Depois do primeiro deploy, troque `canonical`, `og:url` e o `image` do JSON-LD
+em `site/index.html` pela URL final (ou pelo domínio próprio, se houver).
+
 ## Banco de dados
 
 Um único projeto Supabase, multi-tenant: cada lava-jato é uma linha em
