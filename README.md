@@ -135,8 +135,8 @@ nova:
 
 A migração `supabase/migrations/20261021210000_tenant_site.sql` cria:
 
-- `tenant_site` (cor de destaque; a base também guarda campos avançados que
-  ficam reservados para customização premium);
+- `tenant_site` (cor de destaque e frase de abertura; a base também guarda
+  campos avançados que ficam reservados para customização premium);
 - a view pública `public_site`, que a landing lê;
 - o bucket público `tenant-assets` no Storage e as políticas de upload/remoção
   por lava-jato.
@@ -188,9 +188,10 @@ endereço continuam editáveis.
 - **Bloquear horário**: intervalo + motivo (almoço, feriado...), visível na agenda
   e respeitado pela página do cliente
 - **Minha marca**: edita o nome que aparece no topo do site e no painel, o
-  endereço usado no contato/mapa, envia e remove a logo e escolhe uma paleta de
-  destaque. O layout, os textos, as seções e o fundo do topo são padronizados —
-  a página é do produto, a marca é do lava-jato.
+  endereço usado no contato/mapa, a frase de abertura do topo, envia e remove a
+  logo e escolhe uma paleta de destaque. A última palavra da frase recebe a cor
+  de destaque. O layout, os demais textos, as seções e o fundo do topo são
+  padronizados — a página é do produto, a marca é do lava-jato.
 - **Ajustes**: o dono cadastra, edita, arquiva e reativa serviços; define preço
   e duração por tipo de carro (hatch, sedan, SUV, picape), categoria opcional e
   ordem; adiciona, renomeia e remove boxes; edita o WhatsApp e os horários de
@@ -209,17 +210,17 @@ endereço continuam editáveis.
 Para manter o produto simples, repetível e com suporte viável, o plano padrão
 não expõe edição de página:
 
-- textos do hero, fundo do topo, ordem e visibilidade das seções;
+- demais textos do hero, fundo do topo, ordem e visibilidade das seções;
 - avaliações, FAQ e fotos do antes/depois;
 - layout, fontes, componentes e animações;
 - JSON-LD do `<head>` (para multi-tenant de verdade precisa ser renderizado no servidor).
 
 O dono edita apenas **identidade e operação**: nome do site, logo, cor de
-destaque, endereço, WhatsApp, horários, serviços e preços. Página sob medida é
-um projeto separado, não autoatendimento.
+destaque, frase de abertura, endereço, WhatsApp, horários, serviços e preços.
+Página sob medida é um projeto separado, não autoatendimento.
 
-O nome, WhatsApp, endereço, horários, logo e cor **não** são fixos: vêm de
-`tenants`, `business_hours` e `tenant_site`.
+O nome, WhatsApp, endereço, horários, logo, frase de abertura e cor **não** são
+fixos: vêm de `tenants`, `business_hours` e `tenant_site`.
 
 ## Próximos passos
 

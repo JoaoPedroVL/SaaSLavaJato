@@ -509,6 +509,17 @@ input[type="search"]{min-width:260px}
 .theme-swatch.sky{background:#38bdf8}
 .theme-swatch.mint{background:#34d399}
 .theme-swatch.coral{background:#fb7185}
+.hero-phrase-preview{
+  margin-top:14px;padding:18px 20px;border-radius:12px;
+  background:var(--navy);color:#fff;
+  font-family:Archivo,Figtree,sans-serif;font-weight:800;
+  font-size:clamp(24px,4vw,38px);line-height:1.05;letter-spacing:-.03em;
+  overflow-wrap:anywhere;
+}
+.hero-phrase-preview em{font-style:normal;color:var(--preview-accent,var(--sun))}
+.hero-phrase-preview[data-theme="sky"]{--preview-accent:#38bdf8}
+.hero-phrase-preview[data-theme="mint"]{--preview-accent:#34d399}
+.hero-phrase-preview[data-theme="coral"]{--preview-accent:#fb7185}
 .empty{overflow-wrap:anywhere}
 .brand-standard .brand-facts{display:flex;flex-wrap:wrap;gap:7px;margin:15px 0 6px}
 .brand-facts span{

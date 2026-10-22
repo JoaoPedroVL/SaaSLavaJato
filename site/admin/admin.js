@@ -178,7 +178,11 @@
 
   const initial = name => (name || "?").trim().charAt(0).toUpperCase();
 
-  const SITE_DEFAULT = { theme_key: "sun" };
+  const SITE_DEFAULT = {
+    theme_key: "sun",
+    hero_title: "Seu carro merece",
+    hero_highlight: "capricho."
+  };
 
   function renderBrandMark(el, t) {
     if (!el) return;
@@ -1095,6 +1099,36 @@
     return cfg;
   }
 
+  function phraseFromSite(site) {
+    const title = String(site.hero_title || "").trim();
+    const highlight = String(site.hero_highlight || "").trim();
+    return [title, highlight].filter(Boolean).join(" ");
+  }
+
+  // A frase é guardada em duas partes para manter a última palavra
+  // destacada sem transformar o painel em um editor de página.
+  function splitHeroPhrase(value) {
+    const phrase = String(value || "").replace(/\s+/g, " ").trim().slice(0, 90);
+    if (!phrase) return { hero_title: "", hero_highlight: "" };
+    const cut = phrase.lastIndexOf(" ");
+    if (cut < 1) return { hero_title: phrase, hero_highlight: "" };
+    return {
+      hero_title: phrase.slice(0, cut).trim(),
+      hero_highlight: phrase.slice(cut + 1).trim()
+    };
+  }
+
+  function updateHeroPhrasePreview() {
+    const preview = $("#siteHeroPreview");
+    const input = $("#siteHeroPhrase");
+    if (!preview || !input) return;
+    const phrase = splitHeroPhrase(input.value);
+    preview.innerHTML = esc(phrase.hero_title)
+      + (phrase.hero_highlight ? ` <em>${esc(phrase.hero_highlight)}</em>` : "");
+    const theme = document.querySelector('input[name="siteTheme"]:checked');
+    preview.dataset.theme = theme ? theme.value : "sun";
+  }
+
   function renderSiteLogoPreview() {
     const box = $("#siteLogoPreview");
     if (!box) return;
@@ -1126,7 +1160,9 @@
     document.querySelectorAll('input[name="siteTheme"]').forEach(radio => {
       radio.checked = radio.value === site.theme_key;
     });
-    $("#siteSaveStatus").textContent = "A cor é aplicada ao site quando você salvar.";
+    $("#siteHeroPhrase").value = phraseFromSite(site);
+    updateHeroPhrasePreview();
+    $("#siteSaveStatus").textContent = "A frase e a cor são aplicadas ao site quando você salvar.";
     renderSiteLogoPreview();
   }
 
@@ -1144,7 +1180,7 @@
     renderSiteLogoPreview();
 
     try {
-      const rows = await api(`tenant_site?tenant_id=eq.${tenant.id}&select=tenant_id,theme_key&limit=1`);
+      const rows = await api(`tenant_site?tenant_id=eq.${tenant.id}&select=tenant_id,theme_key,hero_title,hero_highlight&limit=1`);
       siteEditor.site = rows && rows[0] ? rows[0] : { ...SITE_DEFAULT, tenant_id: tenant.id };
       siteEditor.supported = true;
     } catch (err) {
@@ -1216,9 +1252,23 @@
     if (!siteEditor.supported) return;
 
     const theme = document.querySelector('input[name="siteTheme"]:checked');
+    const phrase = splitHeroPhrase($("#siteHeroPhrase").value);
+    if (!phrase.hero_title) {
+      toast("Escreva a frase de abertura.", true);
+      $("#siteHeroPhrase").focus();
+      return;
+    }
+    if (phrase.hero_highlight.length > 40) {
+      toast("A última palavra pode ter no máximo 40 caracteres.", true);
+      $("#siteHeroPhrase").focus();
+      return;
+    }
+
     const body = {
       tenant_id: tenant.id,
       theme_key: theme ? theme.value : "sun",
+      hero_title: phrase.hero_title,
+      hero_highlight: phrase.hero_highlight,
       updated_at: new Date().toISOString()
     };
 
@@ -1234,15 +1284,20 @@
       });
       siteEditor.site = rows && rows[0] ? rows[0] : body;
       renderSiteEditor();
-      $("#siteSaveStatus").textContent = "Cor salva. Atualize o site para ver.";
-      toast("Cor atualizada.");
+      $("#siteSaveStatus").textContent = "Marca salva. Atualize o site para ver.";
+      toast("Marca atualizada.");
     } catch (err) {
       $("#siteSaveStatus").textContent = "Não consegui salvar.";
       toast("Não consegui salvar a marca: " + err.message, true);
     } finally {
       btn.disabled = false;
-      btn.textContent = "Salvar cor";
+      btn.textContent = "Salvar marca";
     }
+  });
+
+  $("#siteHeroPhrase").addEventListener("input", updateHeroPhrasePreview);
+  document.querySelectorAll('input[name="siteTheme"]').forEach(radio => {
+    radio.addEventListener("change", updateHeroPhrasePreview);
   });
 
   function validateLogo(file) {

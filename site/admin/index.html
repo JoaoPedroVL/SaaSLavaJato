@@ -173,7 +173,7 @@
       <div class="toolbar">
         <div>
           <h1 class="page-title">Minha marca</h1>
-          <p class="muted">Nome, endereço, logo e cor do seu site. O layout e os textos são padronizados.</p>
+          <p class="muted">Nome, endereço, logo, frase e cor do seu site. O layout e os demais textos são padronizados.</p>
         </div>
         <a class="btn-sm" id="siteOpenLink" href="../" target="_blank" rel="noopener">Abrir site</a>
       </div>
@@ -248,9 +248,21 @@
           </div>
         </div>
 
+        <div class="card hero-phrase-card">
+          <h2>Frase de abertura</h2>
+          <p class="muted card-lead">É a primeira frase do site. A última palavra recebe a cor de destaque.</p>
+          <div class="form-grid">
+            <label class="span-2">Frase
+              <input id="siteHeroPhrase" maxlength="90" placeholder="Seu carro merece capricho." required>
+            </label>
+          </div>
+          <div class="hero-phrase-preview" id="siteHeroPreview" data-theme="sun" aria-hidden="true"></div>
+          <p class="form-hint">Máximo de 90 caracteres. A última palavra fica em destaque no site.</p>
+        </div>
+
         <div class="card brand-standard">
           <h2>O que é padronizado</h2>
-          <p class="muted card-lead">O layout, as seções, os textos e o fluxo de agendamento são iguais para todos os lava-jatos. A página é nossa; a marca é sua.</p>
+          <p class="muted card-lead">O layout, as seções, os demais textos e o fluxo de agendamento são iguais para todos os lava-jatos. A página é nossa; a marca é sua.</p>
           <div class="brand-facts">
             <span>Layout fixo</span>
             <span>Textos revisados</span>
@@ -261,8 +273,8 @@
         </div>
 
         <div class="site-savebar">
-          <span class="muted" id="siteSaveStatus">A cor é aplicada ao site quando você salvar.</span>
-          <button class="btn" type="submit" id="siteSave">Salvar cor</button>
+          <span class="muted" id="siteSaveStatus">A frase e a cor são aplicadas ao site quando você salvar.</span>
+          <button class="btn" type="submit" id="siteSave">Salvar marca</button>
         </div>
       </form>
     </section>
