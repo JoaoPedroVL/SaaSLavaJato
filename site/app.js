@@ -538,13 +538,8 @@
     return out;
   }
 
-  /* ---------------- conteúdo fixo (avaliações/FAQ) ---------------- */
+  /* ---------------- conteúdo fixo (FAQ) ---------------- */
   const CONTENT = {
-    reviews: [
-      { name: "Marcos Almeida", car: "Corolla", text: "Levei pra higienização e o carro saiu com cheiro de novo. Atendimento no horário, sem enrolação." },
-      { name: "Juliana Prado", car: "Jeep Compass", text: "Agendei pelo site em dois minutos. O polimento ficou melhor do que eu esperava." },
-      { name: "Rafael Souza", car: "Golf GTI", text: "Preço justo e serviço caprichado de verdade. Já virei cliente fixo." }
-    ],
     faq: [
       ["Precisa agendar?", "Não é obrigatório, mas quem agenda tem prioridade e não espera. Sem horário, o atendimento é por ordem de chegada."],
       ["Como o preço é calculado?", "Cada serviço tem um valor por porte de veículo. É só selecionar o seu carro na tabela de serviços que o preço e o tempo se ajustam."],
@@ -557,23 +552,6 @@
   };
 
   function renderStatic() {
-    const reviews = $("#reviews");
-    if (reviews) {
-      reviews.innerHTML = CONTENT.reviews.map(r => {
-        const initials = r.name.split(" ").map(n => n[0]).slice(0, 2).join("");
-        return `
-        <article class="review">
-          <span class="stars" aria-label="5 de 5 estrelas">★★★★★</span>
-          <p>“${esc(r.text)}”</p>
-          <div class="review-author">
-            <span class="avatar" aria-hidden="true">${esc(initials)}</span>
-            <span><b>${esc(r.name)}</b><small>${esc(r.car)}</small></span>
-            <span class="g-badge">Google</span>
-          </div>
-        </article>`;
-      }).join("");
-    }
-
     const faq = $("#faq");
     if (faq) {
       faq.innerHTML = CONTENT.faq.map(([q, a]) => `

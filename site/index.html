@@ -167,12 +167,6 @@ body[data-site-theme="coral"]{--sun:#fb7185;--sun-dark:#e11d48;--sun-hover:#fda4
 }
 .hero-bg[data-fit="contain"] img{object-fit:contain;padding:24px 0 0;opacity:.34}
 .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center;position:relative;z-index:1}
-.demo-note{
-  display:flex;width:max-content;max-width:100%;align-items:center;
-  background:rgba(255,194,26,.12);border:1px solid rgba(255,194,26,.42);
-  color:#ffd76a;font-size:12px;font-weight:700;line-height:1.35;letter-spacing:.02em;
-  padding:7px 12px;border-radius:999px;margin-bottom:10px;
-}
 .status{
   display:inline-flex;align-items:center;gap:8px;
   background:rgba(47,191,113,.12);border:1px solid rgba(47,191,113,.35);
@@ -586,7 +580,6 @@ footer a:hover{color:#fff}
     <nav class="nav" aria-label="Navegação principal">
       <a href="#servicos">Serviços</a>
       <a href="#resultado" data-site-link="resultado">Antes e depois</a>
-      <a href="#avaliacoes" data-site-link="avaliacoes">Avaliações</a>
       <a href="#duvidas" data-site-link="duvidas">Dúvidas</a>
       <a href="#contato">Contato</a>
     </nav>
@@ -607,7 +600,6 @@ footer a:hover{color:#fff}
   </div>
   <div class="wrap hero-grid">
     <div>
-      <div class="demo-note">Demonstração do produto · avaliações e números fictícios</div>
       <div class="status" id="openStatus"><span class="dot"></span><span>Verificando horário…</span></div>
 
       <h1 id="heroTitle">Seu carro merece <em>capricho</em>.</h1>
@@ -622,7 +614,6 @@ footer a:hover{color:#fff}
       </div>
 
       <div class="hero-meta">
-        <span><span class="stars" aria-hidden="true">★★★★★</span> 4,9 · 127 avaliações</span>
         <span>📍 Linhares, ES</span>
         <span id="heroHours">🕘 Seg a sáb</span>
       </div>
@@ -637,16 +628,6 @@ footer a:hover{color:#fff}
     </aside>
   </div>
 </section>
-
-<!-- ================= NÚMEROS ================= -->
-<div class="stats" id="statsSection">
-  <div class="wrap">
-    <div class="stat"><b>+4.800</b><span>carros atendidos</span></div>
-    <div class="stat"><b>4,9</b><span>nota no Google</span></div>
-    <div class="stat"><b>92%</b><span>voltam a agendar</span></div>
-    <div class="stat"><b>9 anos</b><span>cuidando de carros</span></div>
-  </div>
-</div>
 
 <!-- ================= SERVIÇOS ================= -->
 <section class="section light" id="servicos">
@@ -701,27 +682,6 @@ footer a:hover{color:#fff}
       </div>
       <p class="ba-note">Arraste a barra para comparar.</p>
     </div>
-  </div>
-</section>
-
-<!-- ================= AVALIAÇÕES ================= -->
-<section class="section light" id="avaliacoes">
-  <div class="wrap">
-    <div class="reviews-head">
-      <div>
-        <div class="eyebrow">Quem já passou por aqui</div>
-        <h2 style="margin-bottom:0">O que os clientes dizem</h2>
-      </div>
-      <div class="rating-big">
-        <b>4,9</b>
-        <div>
-          <span class="stars" aria-hidden="true">★★★★★</span>
-          <small>127 avaliações no Google</small>
-        </div>
-      </div>
-    </div>
-
-    <div class="reviews" id="reviews"></div>
   </div>
 </section>
 

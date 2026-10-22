@@ -174,7 +174,7 @@ endereço continuam editáveis.
   para o calendário e link de WhatsApp com a confirmação completa (envio manual)
 - Trata `slot_taken` (horário acabou de ser pego), `outside_hours` e `past_slot`
 - Status "aberto agora" no fuso do lava-jato
-- Slider antes/depois, prova social, FAQ, mapa, SEO local, barra fixa no celular
+- Slider antes/depois, FAQ, mapa, SEO local, barra fixa no celular
 - Se o banco não responder, a página continua de pé e oferece o WhatsApp
 
 ## O que o painel já faz
