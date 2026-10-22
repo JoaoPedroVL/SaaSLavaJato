@@ -625,6 +625,7 @@
 
   function openChat(serviceId) {
     chat.hidden = false;
+    fab.hidden = true;
     fab.setAttribute("aria-expanded", "true");
     mobileBar.style.display = "none";
     if (matchMedia("(max-width:760px)").matches) document.body.style.overflow = "hidden";
@@ -639,6 +640,7 @@
 
   function closeChat() {
     chat.hidden = true;
+    fab.hidden = false;
     fab.setAttribute("aria-expanded", "false");
     mobileBar.style.display = "";
     document.body.style.overflow = "";
