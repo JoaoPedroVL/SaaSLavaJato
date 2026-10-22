@@ -12,7 +12,8 @@ SaaS de agenda e agendamento por WhatsApp para lava-jatos.
 - `referencias/` — imagens e HTML usados como base
 
 **Projeto Supabase:** `mcccxsovuouleorxfgnr` (SaaSLavaJato, us-west-2)
-**Site publicado:** ainda não
+**Site publicado:** <https://lopesclean027.netlify.app/>  
+**Painel publicado:** <https://lopesclean027.netlify.app/admin/>
 
 A landing **já lê e grava no banco**: serviços, preços, durações e horários vêm
 das views públicas; o chat consulta `busy_slots` e grava com `create_booking`.
@@ -46,8 +47,9 @@ Opções:
 2. **CLI:** `npx netlify-cli deploy --prod --dir=site`
 3. **Netlify Drop:** arraste a pasta `site` para <https://app.netlify.com/drop>.
 
-Depois do primeiro deploy, troque `canonical`, `og:url` e o `image` do JSON-LD
-em `site/index.html` pela URL final (ou pelo domínio próprio, se houver).
+A URL publicada já está configurada em `canonical`, `og:url` e no `image` do
+JSON-LD. Se trocar para um domínio próprio, atualize esses três pontos em
+`site/index.html`.
 
 ## Banco de dados
 
