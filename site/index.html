@@ -546,7 +546,7 @@ footer a:hover{color:#fff}
   .chat{
     inset:0;width:100%;max-width:none;height:100%;max-height:none;border-radius:0;border:0;
     padding-top:env(safe-area-inset-top);
-    padding-bottom:env(safe-area-inset-bottom);
+    padding-bottom:calc(var(--host-badge) + env(safe-area-inset-bottom));
   }
   footer{padding-bottom:calc(84px + var(--host-badge))}
 }
