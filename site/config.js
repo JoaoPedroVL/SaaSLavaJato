@@ -12,5 +12,5 @@ window.LAVA_CONFIG = {
   tenantSlug: new URLSearchParams(location.search).get("loja") || "caprichoso",
 
   // usado só se o banco não responder (o número real vem do tenant)
-  fallbackWhatsapp: "5527999999999"
+  fallbackWhatsapp: "5527997484755"
 };
