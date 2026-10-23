@@ -215,6 +215,15 @@ input,select,.btn,.btn-sm,.btn-ghost,.icon-btn,.theme-toggle,.pill{
 }
 .tabs button:hover{color:var(--ink);background:var(--surface-2)}
 .tabs button.active{color:var(--ink);border-bottom-color:var(--sun);background:transparent}
+.tabs .master-tab{
+  display:inline-flex;align-items:center;flex:0 0 auto;margin-left:auto;
+  padding:9px 14px;align-self:center;border-radius:999px;
+  background:var(--sun-soft);color:var(--sun-ink);text-decoration:none;
+  font-size:12.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;
+  border:1px solid rgba(224,168,0,.18);
+}
+.tabs .master-tab:hover{background:var(--sun);color:var(--sun-ink)}
+@media (min-width:681px){ .tabs .master-tab{display:none} }
 
 /* ---------- toolbar ---------- */
 .toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:4px 0 18px}
@@ -583,11 +592,14 @@ input[type="search"]{min-width:260px}
   .wrap{padding:16px 14px 48px}
   .topbar-inner{padding:10px 14px;gap:8px}
   .user-email{display:none}
+  #masterLink{display:none}
+  body.is-master #viewSiteLink{display:none}
   .top-actions{gap:6px}
   .btn-ghost{padding:7px 9px;font-size:12.5px}
   .brand b{font-size:14px}
   .tabs{top:58px;padding:0 6px;gap:2px;overflow-x:auto}
   .tabs button{padding:12px 9px;font-size:12.5px;white-space:nowrap}
+  .tabs .master-tab{margin-left:0;padding:7px 10px;font-size:11px}
   .toolbar{align-items:stretch}
   .toolbar-right{justify-content:flex-start;width:100%;row-gap:10px}
   input[type="search"]{min-width:0;width:100%}

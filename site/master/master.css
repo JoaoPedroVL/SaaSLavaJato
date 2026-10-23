@@ -1,0 +1,147 @@
+/* =============================================================
+   Painel master — visão da plataforma
+   Reaproveita os tokens e componentes do painel do lava-jato.
+   ============================================================= */
+
+.master-mark{background:linear-gradient(145deg,#ffd24a,var(--sun) 55%,#f5b800)}
+.master-pill{background:rgba(255,194,26,.14);color:var(--sun);border:1px solid rgba(255,194,26,.28)}
+.master-pill.pending{color:var(--sun)}
+.master-topbar{max-width:1180px}
+.master-wrap{max-width:1180px}
+
+.master-head{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;margin:2px 0 18px;
+}
+.master-head h1{font-size:30px}
+.master-head .muted{margin:5px 0 0;font-size:13.5px}
+.master-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+.master-stats{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px;
+}
+.stat-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px;box-shadow:var(--shadow);min-width:0;
+}
+.stat-card span{
+  display:block;font-size:11.5px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.07em;font-weight:700;
+}
+.stat-card b{
+  display:block;font-family:Archivo;font-size:29px;color:var(--ink);margin-top:5px;
+  line-height:1.1;font-variant-numeric:tabular-nums;
+}
+.stat-card small{display:block;font-size:11.5px;color:var(--muted);margin-top:3px}
+
+.master-list-card{padding:0;overflow:hidden}
+.master-filters{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:14px 16px;border-bottom:1px solid var(--line);background:var(--surface-2);
+}
+.master-filters input[type="search"]{flex:1 1 300px;min-width:0}
+.master-filters .select{flex:0 0 170px;width:170px}
+
+.tenant-list{display:flex;flex-direction:column}
+.tenant-row{
+  display:grid;grid-template-columns:minmax(0,1.65fr) minmax(150px,.7fr) auto;
+  gap:18px;align-items:center;padding:15px 16px;border-bottom:1px solid var(--line);
+  transition:background-color .15s ease;
+}
+.tenant-row:last-child{border-bottom:0}
+.tenant-row:hover{background:var(--surface-2)}
+.t-main{min-width:0}
+.t-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.t-title b{
+  font-family:Archivo;font-size:16px;color:var(--ink);line-height:1.2;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;
+}
+.t-slug{font-size:12px;color:var(--muted);margin-top:2px}
+.t-owner{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;margin-top:6px}
+.t-owner span{
+  font-size:12.5px;color:var(--text-2);min-width:0;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.t-owner span.muted{color:var(--muted)}
+.t-owner .t-email{color:var(--muted)}
+
+.t-bill{min-width:0;text-align:left}
+.t-bill .pill{display:inline-flex;margin-bottom:4px}
+.t-bill b{display:block;font-family:Archivo;font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+.t-bill small{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}
+
+.t-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.t-actions .btn-sm{white-space:nowrap}
+.t-actions .btn-sm.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+.t-actions .btn-sm.primary:hover{background:var(--navy-2);border-color:var(--navy-2)}
+
+.pill.paid{background:var(--ok-bg);color:var(--ok)}
+.pill.overdue{background:var(--bad-bg);color:var(--bad)}
+.pill.trial{background:var(--info-bg);color:var(--info)}
+.pill.cancelled{background:var(--surface-3);color:var(--muted)}
+.pill.active{background:var(--ok-bg);color:var(--ok)}
+.pill.suspended{background:var(--warn-bg);color:var(--warn)}
+
+.tenant-modal{max-width:780px}
+.tenant-modal h2{margin-bottom:2px}
+.tenant-modal .muted{margin:0;font-size:13px}
+.form-section{
+  border-top:1px solid var(--line);margin-top:18px;padding-top:16px;
+}
+.form-section:first-of-type{margin-top:16px}
+.form-section h3{
+  font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);
+  margin:0;font-family:Archivo;
+}
+.form-grid textarea{
+  width:100%;margin-top:5px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
+  background:var(--surface-2);color:var(--ink);font-family:Figtree,system-ui,sans-serif;
+  font-size:14px;line-height:1.45;outline:none;resize:vertical;min-height:58px;
+}
+.form-grid textarea:focus{border-color:var(--sun-strong);box-shadow:var(--focus)}
+.check-field{display:flex;flex-direction:column;justify-content:flex-end}
+.check-field .check{margin-top:8px;min-height:39px}
+.owner-access{
+  margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;
+  background:var(--surface-2);
+}
+.owner-access .form-hint{margin:0}
+.owner-access-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tenant-modal .modal-actions{
+  position:sticky;bottom:0;z-index:2;background:var(--surface);
+  border-top:1px solid var(--line);padding:12px 0 4px;margin-top:18px;
+}
+.tenant-modal .form-error{margin-top:12px}
+
+@media (max-width:900px){
+  .master-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tenant-row{grid-template-columns:minmax(0,1fr) auto}
+  .t-bill{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .t-bill .pill{margin:0}
+  .t-bill b{font-size:14px}
+  .t-bill small{margin:0}
+  .t-actions{grid-column:1/-1;justify-content:flex-start}
+}
+
+@media (max-width:620px){
+  .master-wrap{padding:16px 14px 44px}
+  .master-head h1{font-size:25px}
+  .master-actions{width:100%}
+  .master-actions .btn{flex:1}
+  .master-stats{gap:8px}
+  .stat-card{padding:13px}
+  .stat-card b{font-size:24px}
+  .master-filters{padding:12px}
+  .master-filters input[type="search"]{flex:1 1 100%}
+  .master-filters .select{flex:1 1 100%;width:100%}
+  .tenant-row{gap:12px;padding:14px}
+  .t-title b{font-size:15px}
+  .t-owner{flex-direction:column;align-items:flex-start;gap:2px}
+  .t-actions .btn-sm{flex:1}
+  .tenant-modal{max-height:92dvh;padding:20px}
+  .form-grid{grid-template-columns:1fr}
+  .form-grid .span-2{grid-column:auto}
+  .tenant-modal .modal-actions{justify-content:stretch}
+  .tenant-modal .modal-actions .btn,
+  .tenant-modal .modal-actions .btn-sm{flex:1}
+}

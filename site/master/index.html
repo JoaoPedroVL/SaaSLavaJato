@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Painel master · SaaS Lava-Jato</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0a1526">
+<script>
+(function(){
+  try{
+    var saved = localStorage.getItem("lavajato_theme");
+    var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  }catch(e){ document.documentElement.dataset.theme = "light"; }
+})();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a1526'/%3E%3Cpath d='M32 12c7 10 12 16 12 22a12 12 0 0 1-24 0c0-6 5-12 12-22z' fill='%23ffc21a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../admin/admin.css">
+<link rel="stylesheet" href="master.css">
+</head>
+<body>
+
+<svg aria-hidden="true" width="0" height="0" style="position:absolute">
+  <symbol id="sym-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </symbol>
+  <symbol id="sym-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4.2"/>
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>
+  </symbol>
+</svg>
+
+<!-- ================= LOGIN ================= -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="brand">
+      <span class="brand-mark master-mark">S</span>
+      <span><b>Painel master</b><small>SaaS Lava-Jato</small></span>
+    </div>
+
+    <h1>Entrar</h1>
+    <p class="lead">Acesso restrito ao administrador da plataforma.</p>
+
+    <label for="email">E-mail</label>
+    <input id="email" name="email" type="email" autocomplete="username" required placeholder="voce@email.com">
+
+    <label for="password">Senha</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+
+    <p class="form-error" id="loginError" role="alert" hidden></p>
+
+    <button class="btn btn-block" type="submit" id="loginBtn">Entrar</button>
+    <p class="hint">Esta área não é exibida para os donos dos lava-jatos.</p>
+  </form>
+
+  <button type="button" class="theme-toggle login-theme" data-theme-toggle aria-label="Ativar tema escuro" title="Ativar tema escuro">
+    <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><use href="#sym-moon"/></svg>
+    <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><use href="#sym-sun"/></svg>
+  </button>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="appView" hidden>
+  <header class="topbar">
+    <div class="topbar-inner master-topbar">
+      <div class="brand">
+        <span class="brand-mark master-mark">S</span>
+        <span>
+          <b>Painel master</b>
+          <small>SaaS Lava-Jato</small>
+        </span>
+      </div>
+
+      <div class="top-actions">
+        <span class="pill master-pill">Administrador</span>
+        <span class="user-email" id="userEmail"></span>
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Ativar tema escuro" title="Ativar tema escuro">
+          <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><use href="#sym-moon"/></svg>
+          <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><use href="#sym-sun"/></svg>
+        </button>
+        <button class="btn-ghost" id="logoutBtn" type="button">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap master-wrap">
+    <div class="master-head">
+      <div>
+        <h1>Lava-jatos</h1>
+        <p class="muted">Todos os estabelecimentos, donos e cobranças em um lugar.</p>
+      </div>
+      <div class="master-actions">
+        <button type="button" class="btn-sm ghost" id="refreshBtn">Atualizar</button>
+        <button type="button" class="btn" id="newTenantBtn">+ Novo lava-jato</button>
+      </div>
+    </div>
+
+    <div class="master-stats" id="stats">
+      <div class="stat-card"><span>Total</span><b>—</b><small>lava-jatos</small></div>
+      <div class="stat-card"><span>Ativos</span><b>—</b><small>com site no ar</small></div>
+      <div class="stat-card"><span>Em dia</span><b>—</b><small>faturas pagas</small></div>
+      <div class="stat-card"><span>Pendências</span><b>—</b><small>pendentes ou atrasadas</small></div>
+    </div>
+
+    <div class="card master-list-card">
+      <div class="master-filters">
+        <input id="searchInput" type="search" placeholder="Buscar por lava-jato, dono, e-mail ou telefone" aria-label="Buscar lava-jato">
+        <select id="statusFilter" class="select" aria-label="Filtrar por status">
+          <option value="">Todos</option>
+          <option value="paid">Em dia</option>
+          <option value="pending">Pendente</option>
+          <option value="overdue">Atrasado</option>
+          <option value="trial">Em teste</option>
+          <option value="cancelled">Cancelado</option>
+          <option value="suspended">Site suspenso</option>
+        </select>
+      </div>
+      <div class="tenant-list" id="tenantList">
+        <div class="empty">Carregando lava-jatos…</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ================= MODAL DO TENANT ================= -->
+<div class="modal" id="tenantModal" hidden>
+  <form class="modal-card tenant-modal" id="tenantForm" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="tenantModalTitle">
+    <button type="button" class="modal-close" id="tenantModalClose" aria-label="Fechar">×</button>
+    <h2 id="tenantModalTitle">Novo lava-jato</h2>
+    <p class="muted" id="tenantModalLead">Cadastre o estabelecimento e o contato do dono.</p>
+
+    <div class="form-section">
+      <h3>Estabelecimento</h3>
+      <div class="form-grid">
+        <label class="span-2">Nome do lava-jato
+          <input id="tenantName" maxlength="80" placeholder="Ex.: Lava Jato São José" required>
+        </label>
+        <label>Link do site (slug)
+          <input id="tenantSlug" maxlength="40" placeholder="lava-jato-sao-jose" required>
+        </label>
+        <label>WhatsApp do lava-jato
+          <input id="tenantWhats" inputmode="tel" placeholder="5527999999999">
+        </label>
+        <label class="span-2">Endereço
+          <input id="tenantAddress" maxlength="160" placeholder="Rua, número, bairro, cidade/UF">
+        </label>
+        <label>Fuso horário
+          <input id="tenantTimezone" value="America/Sao_Paulo" placeholder="America/Sao_Paulo">
+        </label>
+        <label class="check-field">
+          <span>Site ativo</span>
+          <span class="check"><input type="checkbox" id="tenantActive" checked> Publicar landing</span>
+        </label>
+      </div>
+      <p class="form-hint" id="slugHint">O link ficará: <b>?loja=slug</b>. Depois de salvo, o slug não muda.</p>
+    </div>
+
+    <div class="form-section">
+      <h3>Dono</h3>
+      <div class="form-grid">
+        <label>Nome do dono
+          <input id="ownerName" maxlength="80" placeholder="Nome completo">
+        </label>
+        <label>Telefone do dono
+          <input id="ownerPhone" inputmode="tel" placeholder="(27) 99999-9999">
+        </label>
+        <label class="span-2">E-mail do dono
+          <input id="ownerEmail" type="email" maxlength="120" placeholder="dono@email.com">
+        </label>
+      </div>
+      <div class="owner-access" id="ownerAccess" hidden>
+        <p class="form-hint">O login é criado manualmente no Supabase Auth. Depois, rode o SQL de vínculo para liberar este lava-jato.</p>
+        <div class="owner-access-actions">
+          <button type="button" class="btn-sm" id="copyAccessSql">Copiar SQL de acesso</button>
+          <a class="btn-sm" id="openSupabaseUsers" href="#" target="_blank" rel="noopener">Abrir usuários no Supabase</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>Cobrança</h3>
+      <div class="form-grid">
+        <label>Status
+          <select id="billingStatus">
+            <option value="pending">Pendente</option>
+            <option value="paid">Pago</option>
+            <option value="trial">Em teste</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+        </label>
+        <label>Valor mensal (R$)
+          <input id="billingAmount" inputmode="decimal" placeholder="0,00">
+        </label>
+        <label>Vencimento
+          <input id="billingDue" type="date">
+        </label>
+        <label class="span-2">Observação da cobrança
+          <input id="billingNotes" maxlength="160" placeholder="Ex.: Pix, boleto, desconto...">
+        </label>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>Anotações internas</h3>
+      <div class="form-grid">
+        <label class="span-2">Só você vê
+          <textarea id="internalNotes" rows="2" maxlength="500" placeholder="Histórico, combinados, próximos passos..."></textarea>
+        </label>
+      </div>
+    </div>
+
+    <p class="form-error" id="tenantFormError" role="alert" hidden></p>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-sm ghost" id="tenantCancel">Cancelar</button>
+      <button type="submit" class="btn" id="tenantSave">Salvar lava-jato</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="../admin/config.js"></script>
+<script src="master.js"></script>
+</body>
+</html>

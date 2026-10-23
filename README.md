@@ -7,13 +7,15 @@ SaaS de agenda e agendamento por WhatsApp para lava-jatos.
 - `site/index.html` — landing page (HTML + CSS, sem build)
 - `site/app.js` — carrega dados do Supabase, monta a página e conduz o chat
 - `site/config.js` — URL, anon key e slug do lava-jato
-- `site/admin/` — painel (login, agenda, clientes, resumo, boxes e fechamento)
+- `site/admin/` — painel do lava-jato (login, agenda, clientes, resumo, boxes e fechamento)
+- `site/master/` — painel do administrador do SaaS (todos os lava-jatos, donos e cobranças)
 - `supabase/` — schema do banco (migrações + seed)
 - `referencias/` — imagens e HTML usados como base
 
 **Projeto Supabase:** `mcccxsovuouleorxfgnr` (SaaSLavaJato, us-west-2)
 **Site publicado:** <https://lopesclean027.netlify.app/>  
-**Painel publicado:** <https://lopesclean027.netlify.app/admin/>
+**Painel do lava-jato:** <https://lopesclean027.netlify.app/admin/><br>
+**Painel master:** <https://lopesclean027.netlify.app/master/>
 
 A landing **já lê e grava no banco**: serviços, preços, durações e horários vêm
 das views públicas; o chat consulta `busy_slots` e grava com `create_booking`.
@@ -27,7 +29,8 @@ python3 -m http.server 8080
 
 Abra <http://localhost:8080>. Trocar de lava-jato: <http://localhost:8080/?loja=demo-b>.
 
-Painel: <http://localhost:8080/admin/>.
+Painel do lava-jato: <http://localhost:8080/admin/>.<br>
+Painel master: <http://localhost:8080/master/>.
 
 > Use o servidor (não `file://`): o chat e o painel fazem `fetch` na API do Supabase.
 
@@ -57,9 +60,11 @@ Um único projeto Supabase, multi-tenant: cada lava-jato é uma linha em
 `tenants`, e todas as tabelas têm `tenant_id` protegido por RLS.
 
 ```
-tenants        lava-jatos (slug, nome, whatsapp, endereço, fuso, logo)
-memberships    quem acessa o admin de qual lava-jato
-tenant_site    marca do site (cor; campos avançados ficam para customização premium)
+tenants         lava-jatos (slug, nome, whatsapp, endereço, fuso, logo)
+memberships     quem acessa o admin de qual lava-jato
+platform_admins quem acessa o painel master (dono do SaaS)
+tenant_meta     dados internos: dono, e-mail, telefone, cobrança e observações
+tenant_site     marca do site (cor; campos avançados ficam para customização premium)
 vehicles       hatch, sedan, suv, picape (catálogo global)
 services       serviços de cada lava-jato
 service_prices preço e duração por serviço × veículo
@@ -73,8 +78,14 @@ time_blocks    bloqueios de horário (almoço, feriado, imprevisto)
 ### Comandos
 
 ```bash
-# aplicar migrações + seed no projeto remoto
-supabase db push --include-seed
+# aplicar as migrações pendentes no projeto remoto
+supabase db push
+
+# aplicar um arquivo SQL específico no remoto (sem mexer no histórico)
+supabase db query --linked --file supabase/migrations/20261023000000_platform_admin.sql
+
+# ver o que está aplicado no local e no remoto
+supabase migration list
 
 # recriar o banco local (precisa do Docker)
 supabase start
@@ -101,6 +112,73 @@ criado e **não vai para o git**.
 
 Não existe cadastro público no painel: sem uma linha em `memberships`, o login
 até funciona, mas nenhum dado aparece.
+
+### Liberar o painel master
+
+O master é separado do dono do lava-jato. Ele enxerga **todos** os tenants e
+pode abrir o painel de qualquer um para ajustar marca, serviços, horários,
+agenda e clientes. O dono continua com o painel normal, limitado ao próprio
+lava-jato.
+
+1. Crie o usuário em **Authentication > Users** (marque **Auto Confirm User**).
+2. Edite o e-mail em `supabase/grant-platform-admin.sql`.
+3. Rode o arquivo no **SQL Editor** do Supabase.
+4. Entre em `/master/` com esse e-mail e senha.
+
+O e-mail `joaoadmin@gmail.com` já está liberado como administrador da
+plataforma. Para conferir:
+
+```sql
+select u.email, a.name, a.created_at
+from public.platform_admins a
+join auth.users u on u.id = a.user_id;
+```
+
+### Criar um lava-jato novo pelo master
+
+1. Entre em `/master/` e clique em **+ Novo lava-jato**.
+2. Preencha nome, slug, WhatsApp, endereço e os dados do dono.
+3. Defina valor, vencimento e status da cobrança (pode deixar em branco).
+4. Salve. O master cria o tenant, a ficha interna, a configuração inicial do
+   site, o horário padrão (seg–sex 08–18, sábado 08–13) e o **Box 1**.
+5. Abra **Abrir painel** e cadastre os serviços e preços em **Ajustes**. Sem
+   serviços, a landing do novo lava-jato não mostra a tabela de preços.
+6. Crie o login do dono em **Authentication > Users** e clique em **Editar** no
+   master → **Copiar SQL de acesso**. Cole o SQL no SQL Editor do Supabase: ele
+   liga o e-mail do dono ao tenant pelo slug.
+
+O login do dono ainda é manual nesta versão. A criação automática por convite
+fica para a fase 2 (Edge Function com `service_role`).
+
+### Cobrança no master
+
+O master guarda o status atual da fatura em `tenant_meta`:
+
+- valor mensal (`billing_amount_cents`);
+- vencimento (`billing_due_date`);
+- status: **Pago**, **Pendente**, **Em teste** ou **Cancelado**;
+- observação e anotações internas.
+
+O status **Atrasado** aparece automaticamente quando está pendente e o
+vencimento já passou. Nada é bloqueado sozinho: o master pode sinalizar e
+decidir quando usar **Site ativo** (suspender a landing) no cadastro do
+lava-jato. O acesso do dono ao `/admin/` continua funcionando mesmo com o site
+suspenso.
+
+### Aplicar a migração do painel master
+
+A migração `supabase/migrations/20261023000000_platform_admin.sql` cria:
+
+- `platform_admins` e a função `is_platform_admin()`;
+- `tenant_meta` (dono e cobrança);
+- políticas de RLS que dão ao master acesso de leitura/escrita aos dados de
+  todos os tenants, sem afrouxar o isolamento dos donos.
+
+Já aplicada neste projeto. Para aplicar em outro ambiente:
+
+```bash
+supabase db query --linked --file supabase/migrations/20261023000000_platform_admin.sql
+```
 
 ### Aplicar a migração de boxes (obrigatório para o painel novo)
 
@@ -160,6 +238,9 @@ endereço continuam editáveis.
   valida serviço do próprio tenant e horário de funcionamento
 - Leitura pública só pelas views `public_tenants`, `public_services`, `public_hours` e `public_site`
 - Upload de logo só pelo membro do lava-jato, em uma pasta com o `tenant_id`
+- `platform_admins` só mostra o próprio vínculo; `tenant_meta` é exclusivo do master
+- O master ganha acesso aos dados de todos os tenants via `is_platform_admin()`;
+  o dono continua restrito ao `tenant_id` do seu `membership`
 
 ## O que a página já faz
 
@@ -204,6 +285,21 @@ endereço continuam editáveis.
   realizado, ticket médio, ocupação, serviços mais vendidos e próximos horários
 - Agenda se atualiza sozinha a cada minuto e funciona no celular
 - Se o usuário tiver vínculo com mais de um lava-jato, aparece o seletor
+
+## O que o painel master já faz
+
+- Login separado em `/master/`, só para quem está em `platform_admins`
+- Lista todos os lava-jatos com nome, slug, dono, telefone, e-mail, site ativo
+  e status da cobrança
+- Busca por lava-jato, dono, e-mail ou telefone e filtro por status
+- Cria lava-jato com configuração inicial, horário padrão e Box 1
+- Edita dados do estabelecimento, do dono e da cobrança
+- Marca fatura como paga/pendente em um clique
+- Abre o painel completo de qualquer lava-jato em modo master (agenda,
+  clientes, resumo, marca, serviços, preços, boxes e horários)
+- Copia o SQL que liga o login do dono ao tenant
+- Suspende/reativa a landing pública sem bloquear o acesso do dono
+- O status **Atrasado** é calculado pelo vencimento; o bloqueio é sempre manual
 
 ## O que é padronizado no plano
 

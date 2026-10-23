@@ -64,6 +64,7 @@
   let session = null;
   let user = null;
   let memberships = [];
+  let isPlatformAdmin = false;
   let tenant = null;
   let hours = {};
   let currentDay = null;
@@ -373,8 +374,66 @@
   }
 
   /* ---------------- início do app ---------------- */
+  async function checkPlatformAdmin() {
+    try {
+      const rows = await api("platform_admins?select=user_id&limit=1");
+      return !!(rows && rows.length);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function setupTenantSwitcher() {
+    const switcher = $("#tenantSwitch");
+    if (memberships.length > 1) {
+      switcher.innerHTML = memberships.map((m, i) =>
+        `<option value="${i}">${esc(m.tenants.name)}</option>`).join("");
+      switcher.hidden = false;
+      switcher.onchange = () => selectTenant(Number(switcher.value));
+    } else {
+      switcher.hidden = true;
+    }
+  }
+
   async function start() {
     if (!user) user = await getMe();
+
+    isPlatformAdmin = await checkPlatformAdmin();
+    document.body.classList.toggle("is-master", isPlatformAdmin);
+    const masterLink = $("#masterLink");
+    if (masterLink) masterLink.hidden = !isPlatformAdmin;
+    const masterTab = $("#masterTab");
+    if (masterTab) masterTab.hidden = !isPlatformAdmin;
+
+    if (isPlatformAdmin) {
+      // O master enxerga todos os tenants e pode abrir qualquer painel.
+      const all = await api("tenants?select=id,slug,name,timezone,whatsapp,address,map_query,logo_url,active&order=name.asc");
+      memberships = (all || []).map(t => ({
+        tenant_id: t.id,
+        role: "platform",
+        tenants: t
+      }));
+      if (!memberships.length) {
+        clearSession();
+        showLogin("Nenhum lava-jato cadastrado ainda. Use o painel master para criar o primeiro.");
+        return;
+      }
+
+      setupTenantSwitcher();
+      const requested = new URLSearchParams(location.search).get("tenant");
+      let index = 0;
+      if (requested) {
+        const found = memberships.findIndex(m =>
+          m.tenants.slug === requested || m.tenants.id === requested);
+        if (found >= 0) index = found;
+      }
+      const switcher = $("#tenantSwitch");
+      if (switcher && !switcher.hidden) switcher.value = String(index);
+
+      await selectTenant(index);
+      showApp();
+      return;
+    }
 
     memberships = await api("memberships?select=tenant_id,role,tenants(id,slug,name,timezone,whatsapp,address,map_query,logo_url)");
     if (!memberships || !memberships.length) {
@@ -383,14 +442,7 @@
       return;
     }
 
-    const switcher = $("#tenantSwitch");
-    if (memberships.length > 1) {
-      switcher.innerHTML = memberships.map((m, i) =>
-        `<option value="${i}">${esc(m.tenants.name)}</option>`).join("");
-      switcher.hidden = false;
-      switcher.onchange = () => selectTenant(Number(switcher.value));
-    }
-
+    setupTenantSwitcher();
     await selectTenant(0);
     showApp();
   }
@@ -424,6 +476,11 @@
     $("#identityStatus").textContent = "Alterações valem para o site e o painel.";
     $("#profileStatus").textContent = "Alterações valem para novos agendamentos.";
     document.title = tenant.name + " · Painel";
+    if (isPlatformAdmin) {
+      const url = new URL(location.href);
+      url.searchParams.set("tenant", tenant.slug);
+      history.replaceState(null, "", url);
+    }
 
     hours = {};
     try {
